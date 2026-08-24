@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Sessions{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div><h2>Qui est connecté</h2><div class="subtitle">Dernière connexion / déconnexion par utilisateur</div></div>
+</div>
+
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Utilisateur</th><th>Statut</th><th>Dernière connexion</th><th>Dernière déconnexion</th></tr></thead>
+    <tbody>
+      {% for item in utilisateurs %}
+      <tr>
+        <td>{{ item.utilisateur.get_full_name|default:item.utilisateur.username }}</td>
+        <td>
+          {% if item.en_ligne %}<span class="pill pill-faible">En ligne</span>
+          {% else %}<span class="pill pill-neutral">Hors ligne</span>{% endif %}
+        </td>
+        <td>{{ item.derniere_connexion|date:"d/m/Y H:i:s"|default:"—" }}</td>
+        <td>{{ item.derniere_deconnexion|date:"d/m/Y H:i:s"|default:"—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}Dossier — {{ seance.libelle }}{% endblock %}
+{% block content %}
+<div class="rose-page-header d-print-none">
+  <div>
+    <h2>Dossier — {{ seance.libelle }} — {{ seance.date_seance|date:"d F Y" }}</h2>
+    <div class="subtitle">Assemblé à partir des données de la période ({{ seance.periode_debut|date:"d/m/Y" }} → {{ seance.date_seance|date:"d/m/Y" }})</div>
+  </div>
+  <button onclick="window.print()" class="btn btn-rose-outline">Imprimer</button>
+</div>
+
+{% if seance.ordre_du_jour %}
+<div class="rose-panel">
+  <div class="rose-section-label">Ordre du jour</div>
+  <p class="mb-0">{{ seance.ordre_du_jour|linebreaks }}</p>
+</div>
+{% endif %}
+{% if seance.participants %}
+<div class="rose-panel">
+  <div class="rose-section-label">Participants</div>
+  <p class="mb-0">{{ seance.participants|linebreaks }}</p>
+</div>
+{% endif %}
+
+<div class="rose-panel">
+  <div class="rose-section-label">1. Risques au-delà de l'appétence</div>
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Code</th><th>Risque</th><th>Résiduel</th><th>Niveau</th></tr></thead>
+    <tbody>
+      {% for risque, evaluation in risques_hors_appetence %}
+      <tr>
+        <td>R-{{ risque.pk|stringformat:"03d" }}</td>
+        <td>{{ risque.titre }}</td>
+        <td>{{ evaluation.score_residuel }}</td>
+        <td><span class="pill pill-{{ evaluation.niveau_residuel }}">{{ evaluation.niveau_residuel_display }}</span></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-center text-muted py-3">Aucun risque au-delà de l'appétence.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="rose-panel">
+  <div class="rose-section-label">2. Incidents de la période</div>
+  {% for i in incidents_periode %}
+  <div class="mb-2 pb-2 border-bottom">
+    <strong>{{ i.titre }}</strong> — {{ i.date_survenue|date:"d/m/Y" }}<br>
+    <span class="text-muted small">INC-{{ i.pk|stringformat:"03d" }} · {{ i.processus_concerne|default:"—" }}</span>
+  </div>
+  {% empty %}
+  <p class="text-muted mb-0">Aucun incident sur la période.</p>
+  {% endfor %}
+</div>
+
+<div class="rose-panel">
+  <div class="rose-section-label">3. Contrôles en retard</div>
+  {% for e in controles_retard %}
+  <div class="mb-1">{{ e.controle.nom }} — prévu le {{ e.date_prevue|date:"d/m/Y" }}</div>
+  {% empty %}
+  <p class="text-muted mb-0">Aucun contrôle en retard.</p>
+  {% endfor %}
+</div>
+
+<a href="{% url 'comite:seances' %}" class="btn btn-link d-print-none">← Retour aux séances</a>
+
+<style>
+@media print {
+  .rose-sidebar, .rose-topbar { display: none !important; }
+  .rose-main { padding: 0 !important; }
+  .rose-panel { border: none !important; break-inside: avoid; }
+}
+</style>
+{% endblock %}

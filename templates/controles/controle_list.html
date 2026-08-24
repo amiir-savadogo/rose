@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Plan de contrôle{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Plan de contrôle</h2>
+    <div class="subtitle">{{ controles|length }} contrôle(s) actif(s)</div>
+  </div>
+  <div>
+    <a href="{% url 'controles:executions' %}" class="btn btn-rose-outline">Exécutions</a>
+    {% if peut_gerer_controles %}<a href="{% url 'controles:creer' %}" class="btn btn-rose-primary">+ Contrôle</a>{% endif %}
+  </div>
+</div>
+
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Code</th><th>Contrôle</th><th>Niveau</th><th>Fréquence</th><th>Exécutant</th><th>Superviseur</th><th></th></tr></thead>
+    <tbody>
+      {% for c in controles %}
+      <tr>
+        <td class="text-muted">C-{{ c.pk|stringformat:"03d" }}</td>
+        <td>
+          <span class="fw-semibold">{{ c.nom }}</span><br>
+          <span class="text-muted small">{{ c.direction|default:"" }}</span>
+        </td>
+        <td><span class="pill {% if c.niveau == 'n2' %}pill-modere{% else %}pill-neutral{% endif %}">{{ c.get_niveau_display }}</span></td>
+        <td>{{ c.get_frequence_display }}</td>
+        <td>{{ c.executant }}</td>
+        <td>{{ c.superviseur }}</td>
+        <td>
+          {% if peut_gerer_controles %}
+          <a href="{% url 'controles:programmer' c.pk %}" class="small">Programmer</a> ·
+          <a href="{% url 'controles:modifier' c.pk %}" class="small">Modifier</a>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">Aucun contrôle défini.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Campagnes de revue{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div><h2>Campagnes de revue</h2><div class="subtitle">{{ campagnes|length }} campagne(s)</div></div>
+  <a href="{% url 'risks:campagne_creer' %}" class="btn btn-rose-primary">+ Campagne</a>
+</div>
+
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Nom</th><th>Ouverture</th><th>Clôture</th><th>Seuil d'appétence</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% for c in campagnes %}
+      <tr>
+        <td class="fw-semibold">{{ c.nom }}</td>
+        <td>{{ c.date_ouverture|date:"d/m/Y" }}</td>
+        <td>{{ c.date_cloture|date:"d/m/Y"|default:"—" }}</td>
+        <td>{{ c.seuil_appetence }}</td>
+        <td>
+          {% if c.statut == "ouverte" %}<span class="pill pill-faible">Ouverte</span>
+          {% else %}<span class="pill pill-neutral">Clôturée</span>{% endif %}
+        </td>
+        <td>
+          {% if c.statut == "ouverte" %}
+          <form method="post" action="{% url 'risks:campagne_cloturer' c.pk %}" onsubmit="return confirm('Clôturer cette campagne ? Ses évaluations seront figées.');">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-sm btn-rose-outline">Clôturer</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">Aucune campagne. Les évaluations créées sans campagne restent possibles mais ne seront pas rattachées à un cycle de revue.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

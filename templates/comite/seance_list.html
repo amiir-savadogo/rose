@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Comité des risques{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Comité des risques</h2>
+    <div class="subtitle">Séances passées et à venir</div>
+  </div>
+  {% if peut_gerer_risques %}<a href="{% url 'comite:creer' %}" class="btn btn-rose-primary">+ Nouvelle séance</a>{% endif %}
+</div>
+
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Libellé</th><th>Date</th><th>Entité</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% for s in seances %}
+      <tr>
+        <td class="fw-semibold">{{ s.libelle }}</td>
+        <td>{{ s.date_seance|date:"d/m/Y" }}</td>
+        <td>{{ s.direction|default:"—" }}</td>
+        <td>
+          <span class="pill {% if s.statut == 'tenue' %}pill-faible{% elif s.statut == 'annulee' %}pill-critique{% else %}pill-neutral{% endif %}">
+            {{ s.get_statut_display }}
+          </span>
+        </td>
+        <td><a href="{% url 'comite:dossier' s.pk %}" class="small">Ouvrir le dossier</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-4">Aucune séance enregistrée.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

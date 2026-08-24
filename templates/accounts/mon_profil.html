@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Mon profil{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div><h2>Mon profil</h2><div class="subtitle">{{ user.username }} · {{ user.get_role_display }}</div></div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Informations et notifications</div>
+      <form method="post" action="{% url 'accounts:mon_profil' %}">
+        {% csrf_token %}
+        {% for field in form %}
+          {% if field.name in "notif_email,notif_application,notif_sms" %}
+          <div class="form-check mb-2">
+            {{ field }}
+            <label class="form-check-label small" for="{{ field.id_for_label }}">{{ field.label }}</label>
+          </div>
+          {% else %}
+          <div class="mb-3">
+            <label class="form-label small">{{ field.label }}</label>
+            {{ field }}
+          </div>
+          {% endif %}
+        {% endfor %}
+        <button type="submit" class="btn btn-rose-primary">Enregistrer</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Changer mon mot de passe</div>
+      <form method="post" action="{% url 'accounts:changer_mon_mot_de_passe' %}">
+        {% csrf_token %}
+        {% for field in form_mdp %}
+        <div class="mb-3">
+          <label class="form-label small">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-rose-primary">Changer le mot de passe</button>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

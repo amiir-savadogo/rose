@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Tableau de bord</h2>
+    <div class="subtitle">Vue d'ensemble de l'exposition aux risques</div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="rose-kpi"><div class="label">Risques évalués</div><div class="value">{{ risques_evalues }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="rose-kpi"><div class="label">Hors appétence</div><div class="value" style="color:var(--rose-critique-text);">{{ total_hors_appetence }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="rose-kpi"><div class="label">Contrôles en retard</div><div class="value" style="color:var(--rose-eleve-text);">{{ total_controles_en_retard }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="rose-kpi"><div class="label">Incidents ouverts</div><div class="value">{{ total_incidents_ouverts }}</div></div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <div class="rose-section-label">Profil de risque</div>
+  <div class="row g-3 text-center">
+    <div class="col-md-3">
+      <div style="background:var(--rose-critique-bg); border-radius:10px; padding:14px;">
+        <div class="fs-4 fw-bold" style="color:var(--rose-critique-text);">{{ profil.critique }}</div>
+        <div class="small text-muted">Critique</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div style="background:var(--rose-eleve-bg); border-radius:10px; padding:14px;">
+        <div class="fs-4 fw-bold" style="color:var(--rose-eleve-text);">{{ profil.eleve }}</div>
+        <div class="small text-muted">Élevé</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div style="background:var(--rose-modere-bg); border-radius:10px; padding:14px;">
+        <div class="fs-4 fw-bold" style="color:var(--rose-modere-text);">{{ profil.modere }}</div>
+        <div class="small text-muted">Modéré</div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div style="background:var(--rose-faible-bg); border-radius:10px; padding:14px;">
+        <div class="fs-4 fw-bold" style="color:var(--rose-faible-text);">{{ profil.faible }}</div>
+        <div class="small text-muted">Faible</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <div class="d-flex justify-content-between align-items-center">
+    <div class="rose-section-label mb-0">Risques au-delà de l'appétence</div>
+    <a href="{% url 'risks:liste' %}?niveau=eleve" class="small">Tout voir</a>
+  </div>
+  <table class="table rose-table mb-0 mt-2">
+    <thead><tr><th>Code</th><th>Risque</th><th>Entité</th><th>Résiduel</th><th>Niveau</th></tr></thead>
+    <tbody>
+      {% for risque, evaluation in hors_appetence|slice:":6" %}
+      <tr onclick="window.location='{% url 'risks:detail' risque.pk %}'" style="cursor:pointer;">
+        <td class="text-muted">R-{{ risque.pk|stringformat:"03d" }}</td>
+        <td class="fw-semibold">{{ risque.titre }}</td>
+        <td>{{ risque.direction|default:"—" }}</td>
+        <td>{{ evaluation.score_residuel }}</td>
+        <td><span class="pill pill-{{ evaluation.niveau_residuel }}">{{ evaluation.niveau_residuel_display }}</span></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-3">Aucun risque hors appétence.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Contrôles en retard</div>
+      <table class="table rose-table mb-0">
+        {% for e in executions_en_retard %}
+        <tr>
+          <td>{{ e.controle.nom }}</td>
+          <td class="text-end text-muted small">{{ e.date_prevue|date:"d/m/Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center text-muted py-3">Aucun contrôle en retard.</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Contrôles sans preuve archivée</div>
+      <table class="table rose-table mb-0">
+        {% for e in executions_sans_preuve %}
+        <tr>
+          <td>{{ e.controle.nom }}</td>
+          <td class="text-end text-muted small">réalisé le {{ e.date_realisee|date:"d/m/Y" }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-center text-muted py-3">Aucun contrôle sans preuve.</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <div class="rose-section-label">Matrice de chaleur des risques (probabilité × impact résiduels)</div>
+  <table class="table rose-table text-center mb-0">
+    <thead><tr><th></th>{% for i in niveaux %}<th>Impact {{ i }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% for ligne in heatmap_matrix %}
+      <tr>
+        <th class="text-start">Proba {{ ligne.probabilite }}</th>
+        {% for cellule in ligne.cellules %}
+          <td class="heatmap-cell" style="background-color: {{ cellule.couleur }};">{{ cellule.total|default:"" }}</td>
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

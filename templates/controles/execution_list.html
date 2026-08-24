@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Exécutions de contrôle{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Exécutions de contrôle</h2>
+    <div class="subtitle">Historique et suivi des exécutions programmées</div>
+  </div>
+  <a href="{% url 'controles:liste' %}" class="btn btn-rose-outline">← Plan de contrôle</a>
+</div>
+
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Contrôle</th><th>Entité</th><th>Date prévue</th><th>Date réalisée</th><th>Résultat</th><th>Preuve</th><th></th></tr></thead>
+    <tbody>
+      {% for e in executions %}
+      <tr>
+        <td>{{ e.controle.nom }}</td>
+        <td>{{ e.controle.direction|default:"—" }}</td>
+        <td>{{ e.date_prevue|date:"d/m/Y" }}{% if e.en_retard %} <span class="pill pill-critique">Retard</span>{% endif %}</td>
+        <td>{{ e.date_realisee|date:"d/m/Y"|default:"—" }}</td>
+        <td>
+          <span class="pill {% if e.resultat == 'conforme' %}pill-faible{% elif e.resultat == 'non_conforme' %}pill-critique{% elif e.resultat == 'sans_preuve' %}pill-eleve{% else %}pill-neutral{% endif %}">
+            {{ e.get_resultat_display }}
+          </span>
+        </td>
+        <td>{% if e.preuve %}<a href="{{ e.preuve.url }}" target="_blank"><i class="bi bi-paperclip"></i></a>{% else %}—{% endif %}</td>
+        <td><a href="{% url 'controles:renseigner' e.pk %}" class="small">Renseigner</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">Aucune exécution programmée.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

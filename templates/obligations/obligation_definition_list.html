@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Obligations{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h2><i class="bi bi-journal-check"></i> Obligations réglementaires</h2>
+  <a href="{% url 'obligations:creer' %}" class="btn btn-rose-primary">+ Nouvelle obligation</a>
+</div>
+<p class="text-muted small">Ceci définit les obligations récurrentes. Les échéances concrètes sont générées automatiquement (commande <code>generer_echeances</code>) et visibles dans <a href="{% url 'obligations:liste' %}">Échéances</a>.</p>
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Nom</th><th>Périodicité</th><th>Référence</th><th>Responsable</th><th>Active</th></tr></thead>
+    <tbody>
+      {% for o in obligations %}
+      <tr>
+        <td>{{ o.nom }}</td>
+        <td>{{ o.get_periodicite_display }}</td>
+        <td class="text-muted small">{{ o.texte_reference|default:"—" }}</td>
+        <td>{{ o.responsable }}</td>
+        <td>{% if o.active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-4">Aucune obligation définie.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

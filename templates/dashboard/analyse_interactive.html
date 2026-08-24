@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Analyse interactive{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Analyse interactive</h2>
+    <div class="subtitle">Croiser et filtrer les risques actifs par catégorie et entité</div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <form method="get" class="row g-3">
+    <div class="col-md-4">
+      <label class="form-label small">Catégorie de risque</label>
+      <select name="categorie" class="form-select" onchange="this.form.submit()">
+        <option value="">Toutes les catégories</option>
+        {% for c in categories %}
+        <option value="{{ c.pk }}" {% if c.pk == categorie_id %}selected{% endif %}>{{ c.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">Entité</label>
+      <select name="direction" class="form-select" onchange="this.form.submit()">
+        <option value="">Toutes les entités</option>
+        {% for d in directions %}
+        <option value="{{ d.pk }}" {% if d.pk == direction_id %}selected{% endif %}>{{ d.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </form>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Profil de risque résiduel</div>
+      <canvas id="chartProfil" height="180"></canvas>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Risque résiduel moyen par catégorie</div>
+      <canvas id="chartCategorie" height="180"></canvas>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Écart inhérent / résiduel (10 risques les plus élevés)</div>
+      <canvas id="chartEcarts" height="200"></canvas>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Incidents par catégorie d'événement</div>
+      <canvas id="chartIncidents" height="200"></canvas>
+    </div>
+  </div>
+</div>
+
+{{ profil_json|json_script:"data-profil" }}
+{{ moyenne_par_categorie_json|json_script:"data-categorie" }}
+{{ top_ecarts_json|json_script:"data-ecarts" }}
+{{ par_evenement_json|json_script:"data-incidents" }}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script>
+const profil = JSON.parse(document.getElementById('data-profil').textContent);
+const parCategorie = JSON.parse(document.getElementById('data-categorie').textContent);
+const topEcarts = JSON.parse(document.getElementById('data-ecarts').textContent);
+const parIncident = JSON.parse(document.getElementById('data-incidents').textContent);
+
+new Chart(document.getElementById('chartProfil'), {
+  type: 'bar',
+  data: {
+    labels: ['Faible', 'Modéré', 'Élevé', 'Critique'],
+    datasets: [{
+      data: [profil.faible, profil.modere, profil.eleve, profil.critique],
+      backgroundColor: ['#3c8558', '#5b8ba3', '#c78e51', '#c0392b'],
+    }]
+  },
+  options: { plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('chartCategorie'), {
+  type: 'bar',
+  data: {
+    labels: parCategorie.map(x => x.categorie),
+    datasets: [{ label: 'Score résiduel moyen', data: parCategorie.map(x => x.moyenne), backgroundColor: '#2f6a4f' }]
+  },
+  options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+});
+
+new Chart(document.getElementById('chartEcarts'), {
+  type: 'bar',
+  data: {
+    labels: topEcarts.map(x => x.risque),
+    datasets: [
+      { label: 'Inhérent', data: topEcarts.map(x => x.inherent), backgroundColor: '#c9d2d6' },
+      { label: 'Résiduel', data: topEcarts.map(x => x.residuel), backgroundColor: '#2f6a4f' },
+    ]
+  },
+  options: { scales: { x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 40 } } } }
+});
+
+new Chart(document.getElementById('chartIncidents'), {
+  type: 'bar',
+  data: {
+    labels: parIncident.map(x => x.label),
+    datasets: [{ data: parIncident.map(x => x.total), backgroundColor: '#7a5ea8' }]
+  },
+  options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+});
+</script>
+{% endblock %}

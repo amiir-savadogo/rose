@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}Programmer — {{ controle.nom }}{% endblock %}
+{% block content %}
+<h2 class="mb-4" style="font-size:1.3rem;">Programmer une exécution — {{ controle.nom }}</h2>
+<div class="rose-panel" style="max-width:500px;">
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label">{{ field.label }}</label>
+      {{ field }}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-rose-primary">Programmer</button>
+    <a href="{% url 'controles:liste' %}" class="btn btn-link">Annuler</a>
+  </form>
+</div>
+{% endblock %}

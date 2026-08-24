@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Indicateurs de risque{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Indicateurs de risque</h2>
+    <div class="subtitle">{{ indicateurs|length }} indicateur(s) suivi(s)</div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <form method="get" class="mb-3">
+    <label class="form-label small">État</label>
+    <select name="etat" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
+      <option value="">Tous</option>
+      <option value="alerte" {% if request.GET.etat == "alerte" %}selected{% endif %}>En alerte</option>
+      <option value="limites" {% if request.GET.etat == "limites" %}selected{% endif %}>Dans les limites</option>
+    </select>
+  </form>
+
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Code</th><th>Indicateur</th><th>Risque</th><th>Dernière valeur</th><th>Date</th><th>Seuil</th><th>État</th></tr></thead>
+    <tbody>
+      {% for k in indicateurs %}
+      <tr>
+        <td class="text-muted">KRI-{{ k.pk|stringformat:"03d" }}</td>
+        <td class="fw-semibold">{{ k.nom }}</td>
+        <td><a href="{% url 'risks:detail' k.risque.pk %}">{{ k.risque.titre }}</a></td>
+        <td>{{ k.valeur_actuelle|default:"—" }} {{ k.unite }}</td>
+        <td class="text-muted">{{ k.maj_le|date:"d/m/Y" }}</td>
+        <td>{{ k.seuil_alerte }}</td>
+        <td>
+          {% if k.en_alerte %}<span class="pill pill-critique">Alerte</span>
+          {% else %}<span class="pill pill-faible">Dans les limites</span>{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="7" class="text-center text-muted py-4">Aucun indicateur suivi.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,37 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rose}
+      POSTGRES_USER: ${POSTGRES_USER:-rose}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rose}
+    volumes:
+      - rose_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rose}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: db
+    volumes:
+      - .:/app
+      - rose_media:/app/media
+      - rose_static:/app/staticfiles
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  rose_postgres_data:
+  rose_media:
+  rose_static:

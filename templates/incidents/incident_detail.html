@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+{% block title %}{{ incident.titre }}{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>INC-{{ incident.pk|stringformat:"03d" }} — {{ incident.titre }}</h2>
+    <div class="subtitle">
+      <span class="pill pill-neutral">{{ incident.get_statut_display }}</span>
+      <span class="pill {% if incident.gravite == 'critique' %}pill-critique{% elif incident.gravite == 'majeure' %}pill-eleve{% elif incident.gravite == 'moderee' %}pill-modere{% else %}pill-neutral{% endif %}">{{ incident.get_gravite_display }}</span>
+    </div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <div class="rose-section-label">Description</div>
+  <p>{{ incident.description|linebreaks }}</p>
+  <p class="text-muted small mb-0">
+    Survenu le {{ incident.date_survenue|date:"d/m/Y" }}{% if incident.date_detection %} · Détecté le {{ incident.date_detection|date:"d/m/Y" }} (+{{ incident.delai_detection_jours }} j){% endif %} · Entité : {{ incident.direction|default:"—" }} · Processus : {{ incident.processus_concerne|default:"—" }}
+    {% if incident.perte_brute %} · Perte brute : {{ incident.perte_brute }} FCFA{% if incident.recuperation %} (récupéré : {{ incident.recuperation }}){% endif %}{% endif %}
+    <br>Déclaré par {{ incident.declare_par }} · Assigné à {{ incident.assigne_a|default:"personne pour le moment" }}
+  </p>
+  {% if incident.risques_lies.all %}
+  <p class="mb-0 mt-2"><strong>Risques liés :</strong>
+    {% for r in incident.risques_lies.all %}<a href="{% url 'risks:detail' r.pk %}">{{ r.titre }}</a>{% if not forloop.last %}, {% endif %}{% endfor %}
+  </p>
+  {% endif %}
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Changer le statut</div>
+      {% if peut_traiter_incidents %}
+      <form method="post" action="{% url 'incidents:changer_statut' incident.pk %}">
+        {% csrf_token %}
+        {% for field in form_statut %}
+        <div class="mb-2">
+          <label class="form-label small">{{ field.label }}</label>
+          {{ field }}
+        </div>
+        {% endfor %}
+        <button type="submit" class="btn btn-rose-primary btn-sm">Mettre à jour</button>
+      </form>
+      {% else %}
+      <p class="text-muted small mb-0">Seuls les profils Risk Manager, Contrôleur et Administrateur peuvent faire évoluer le statut d'un incident.</p>
+      {% endif %}
+    </div>
+
+    <div class="rose-panel">
+      <div class="rose-section-label">Pièces jointes</div>
+      <ul class="list-unstyled mb-3">
+        {% for pj in pieces_jointes %}
+        <li class="mb-1"><a href="{{ pj.fichier.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ pj.fichier.name }}</a></li>
+        {% empty %}
+        <li class="text-muted">Aucune pièce jointe.</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="{% url 'incidents:ajouter_piece_jointe' incident.pk %}" enctype="multipart/form-data">
+        {% csrf_token %}
+        {{ form_piece_jointe.fichier }}
+        <button type="submit" class="btn btn-sm btn-rose-outline mt-2">Ajouter</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Historique de traitement</div>
+      {% for c in commentaires %}
+      <div class="mb-3 pb-2 border-bottom">
+        <div class="d-flex justify-content-between">
+          <strong class="small">{{ c.auteur }}</strong>
+          <small class="text-muted">{{ c.cree_le|date:"d/m/Y H:i" }}</small>
+        </div>
+        {% if c.nouveau_statut %}<div class="small text-muted">{{ c.ancien_statut }} → {{ c.nouveau_statut }}</div>{% endif %}
+        <div class="small">{{ c.texte }}</div>
+      </div>
+      {% empty %}
+      <p class="text-muted mb-0">Aucun historique pour le moment.</p>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<a href="{% url 'incidents:liste' %}" class="btn btn-link text-muted">← Retour à la liste</a>
+{% endblock %}

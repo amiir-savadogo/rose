@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle direction{% endblock %}
+{% block content %}
+<h2 class="mb-4" style="font-size:1.3rem;">Nouvelle direction / entité</h2>
+<div class="rose-panel" style="max-width:600px;">
+  <form method="post">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-rose-primary">Enregistrer</button>
+    <a href="{% url 'accounts:directions' %}" class="btn btn-link">Annuler</a>
+  </form>
+</div>
+{% endblock %}

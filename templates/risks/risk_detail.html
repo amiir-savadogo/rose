@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}{{ risque.titre }}{% endblock %}
+{% block content %}
+{% with derniere=risque.derniere_evaluation %}
+<div class="rose-page-header">
+  <div>
+    <h2>R-{{ risque.pk|stringformat:"03d" }} — {{ risque.titre }}</h2>
+    <div class="subtitle">{{ risque.categorie }} · {{ risque.direction|default:"—" }} · {{ risque.processus|default:"—" }}</div>
+  </div>
+  {% if peut_gerer %}
+  <div>
+    <a href="{% url 'risks:evaluer' risque.pk %}" class="btn btn-rose-primary btn-sm">Évaluer</a>
+    <a href="{% url 'risks:modifier' risque.pk %}" class="btn btn-rose-outline btn-sm">Modifier</a>
+    <a href="{% url 'risks:plan_action' risque.pk %}" class="btn btn-rose-outline btn-sm">+ Plan d'action</a>
+  </div>
+  {% endif %}
+</div>
+
+{% if derniere %}
+<div class="row g-3 mb-3">
+  <div class="col-md-3">
+    <div class="rose-kpi"><div class="label">Risque inhérent</div><div class="value">{{ derniere.score_inherent }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="rose-kpi"><div class="label">Dispositif de maîtrise</div><div class="value">{{ derniere.qualite_dispositif_maitrise }}/5</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="rose-kpi"><div class="label">Risque résiduel</div><div class="value" style="color:var(--rose-{{ derniere.niveau_residuel }}-text);">{{ derniere.score_residuel }}</div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="rose-kpi"><div class="label">Niveau</div><div class="value"><span class="pill pill-{{ derniere.niveau_residuel }}">{{ derniere.niveau_residuel_display }}</span></div></div>
+  </div>
+</div>
+{% endif %}
+
+<div class="rose-panel">
+  <div class="rose-section-label">Description</div>
+  <p class="mb-0">{{ risque.description|default:"Aucune description."|linebreaks }}</p>
+  <p class="text-muted small mb-0 mt-2">Propriétaire : {{ risque.proprietaire|default:"—" }} · Statut : {{ risque.get_statut_display }}</p>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Historique des évaluations</div>
+      {% if evaluations %}
+      <table class="table rose-table mb-0">
+        <thead><tr><th>Date</th><th>Inhérent</th><th>Résiduel</th><th>Niveau</th><th>Par</th></tr></thead>
+        <tbody>
+          {% for e in evaluations %}
+          <tr>
+            <td>{{ e.date_evaluation|date:"d/m/Y" }}</td>
+            <td>{{ e.score_inherent }}</td>
+            <td>{{ e.score_residuel }}</td>
+            <td><span class="pill pill-{{ e.niveau_residuel }}">{{ e.niveau_residuel_display }}</span></td>
+            <td>{{ e.evalue_par }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted mb-0">Aucune évaluation enregistrée.</p>
+      {% endif %}
+    </div>
+
+    <div class="rose-panel">
+      <div class="d-flex justify-content-between align-items-center rose-section-label mb-2">
+        <span>Indicateurs clés de risque (KRI)</span>
+        {% if peut_gerer %}<a href="{% url 'risks:ajouter_kri' risque.pk %}" class="btn btn-sm btn-rose-outline">+ Ajouter</a>{% endif %}
+      </div>
+      {% if indicateurs %}
+      <table class="table rose-table mb-0">
+        {% for k in indicateurs %}
+        <tr>
+          <td>{{ k.nom }}</td>
+          <td class="text-end"><span class="pill {% if k.en_alerte %}pill-critique{% else %}pill-faible{% endif %}">{{ k.valeur_actuelle|default:"—" }} / {{ k.seuil_alerte }}</span></td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <p class="text-muted mb-0">Aucun indicateur défini.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Plans d'action</div>
+      {% if plans_action %}
+      <table class="table rose-table mb-0">
+        {% for a in plans_action %}
+        <tr>
+          <td>
+            {{ a.description }}<br>
+            <span class="text-muted small">{{ a.responsable }} · échéance {{ a.echeance|date:"d/m/Y" }}</span>
+          </td>
+          <td class="text-end"><span class="pill pill-neutral">{{ a.get_statut_display }}</span></td>
+        </tr>
+        {% endfor %}
+      </table>
+      {% else %}
+      <p class="text-muted mb-0">Aucun plan d'action.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<a href="{% url 'risks:liste' %}" class="btn btn-link text-muted">← Retour à la liste</a>
+{% endwith %}
+{% endblock %}

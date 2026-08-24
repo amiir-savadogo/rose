@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Bibliothèque documentaire{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Bibliothèque documentaire</h2>
+    <div class="subtitle">{{ documents|length }} document(s)</div>
+  </div>
+  {% if peut_gerer_bibliotheque %}<a href="{% url 'bibliotheque:creer' %}" class="btn btn-rose-primary">+ Document</a>{% endif %}
+</div>
+
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Titre</th><th>Nature</th><th>Version en vigueur</th><th>Approbation</th><th>Revue prévue</th><th>État</th></tr></thead>
+    <tbody>
+      {% for d in documents %}
+      {% with derniere=d.derniere_version %}
+      <tr onclick="window.location='{% url 'bibliotheque:detail' d.pk %}'" style="cursor:pointer;">
+        <td class="fw-semibold">{{ d.titre }}</td>
+        <td class="text-muted">{{ d.get_nature_display }}</td>
+        <td>{% if derniere %}v{{ derniere.version }}{% else %}—{% endif %}</td>
+        <td>{{ derniere.date_approbation|date:"d/m/Y"|default:"—" }}</td>
+        <td>{{ derniere.revue_prevue|date:"d/m/Y"|default:"—" }}</td>
+        <td>
+          {% if d.etat == 'en_retard' %}<span class="pill pill-critique">En retard</span>
+          {% elif d.etat == 'proche' %}<span class="pill pill-eleve">Dans {{ d.jours_avant_revue }} j</span>
+          {% elif d.etat == 'a_jour' %}<span class="pill pill-faible">À jour</span>
+          {% else %}<span class="pill pill-neutral">Sans version</span>{% endif %}
+        </td>
+      </tr>
+      {% endwith %}
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">Aucun document enregistré.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

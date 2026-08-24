@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Journal d'audit{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Journal d'audit</h2>
+    <div class="subtitle">{{ entrees|length }} entrée(s) affichée(s) (300 plus récentes)</div>
+  </div>
+</div>
+
+<div class="rose-panel" style="border-left:4px solid var(--rose-modere-text);">
+  <p class="mb-0 small">Le journal ne peut être ni modifié ni supprimé depuis la plateforme. Les connexions, y compris les échecs, y figurent également.</p>
+</div>
+
+<div class="rose-panel">
+  <form method="get" class="row g-3 align-items-end mb-3">
+    <div class="col-md-3">
+      <label class="form-label small">Action</label>
+      <select name="action" class="form-select">
+        <option value="">Toutes</option>
+        <option value="creation" {% if request.GET.action == "creation" %}selected{% endif %}>Création</option>
+        <option value="modification" {% if request.GET.action == "modification" %}selected{% endif %}>Modification</option>
+        <option value="suppression" {% if request.GET.action == "suppression" %}selected{% endif %}>Suppression</option>
+      </select>
+    </div>
+    <div class="col-md-4">
+      <label class="form-label small">Recherche</label>
+      <input type="text" name="q" class="form-control" placeholder="Objet, utilisateur, type" value="{{ request.GET.q }}">
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-rose-primary">Filtrer</button>
+      <a href="{% url 'audit:liste' %}" class="btn btn-rose-outline">Réinitialiser</a>
+    </div>
+  </form>
+
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Horodatage</th><th>Utilisateur</th><th>Action</th><th>Type</th><th>Objet</th></tr></thead>
+    <tbody>
+      {% for e in entrees %}
+      <tr>
+        <td class="text-muted">{{ e.horodatage|date:"d/m/Y H:i:s" }}</td>
+        <td>{{ e.utilisateur|default:"système" }}</td>
+        <td><span class="pill pill-neutral">{{ e.get_action_display }}</span></td>
+        <td class="text-muted small">{{ e.modele }}</td>
+        <td class="fw-semibold">{{ e.objet_repr }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="5" class="text-center text-muted py-4">Aucune entrée.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

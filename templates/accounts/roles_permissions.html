@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Rôles et permissions{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div><h2>Rôles et permissions</h2><div class="subtitle">Ce que chaque rôle a le droit de faire dans Rose</div></div>
+</div>
+
+<div class="rose-panel" style="border-left:4px solid var(--rose-modere-text);">
+  <p class="mb-0 small">Administrateur n'apparaît pas ci-dessous : il conserve toujours tous les droits, y compris sur cette page — c'est volontaire, pour qu'un administrateur ne puisse jamais se retirer lui-même l'accès par erreur. La gestion des utilisateurs, des directions et des campagnes reste également réservée à Administrateur et n'est pas déléguable ici.</p>
+</div>
+
+<div class="rose-panel">
+  <form method="post">
+    {% csrf_token %}
+    <table class="table rose-table mb-3">
+      <thead>
+        <tr>
+          <th class="text-start">Action</th>
+          {% for role, libelle in roles %}<th>{{ libelle }}</th>{% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        {% for ligne in lignes %}
+        <tr>
+          <td class="text-start">{{ ligne.libelle }}</td>
+          {% for r in ligne.roles %}
+          <td>
+            <input type="checkbox" class="form-check-input" name="{{ r.role }}__{{ ligne.cle }}" {% if r.coche %}checked{% endif %}>
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <button type="submit" class="btn btn-rose-primary">Enregistrer les permissions</button>
+  </form>
+</div>
+{% endblock %}

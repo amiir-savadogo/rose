@@ -1,0 +1,145 @@
+from django.contrib.auth.decorators import login_required
+from django.db.models import Count
+from django.shortcuts import render
+from django.utils import timezone
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+
+from apps.controles.models import ControleExecution
+from apps.incidents.models import Incident
+from apps.obligations.models import ObligationOccurrence
+from apps.risks.models import KeyRiskIndicator, Risk
+
+
+def _donnees_synthese():
+    risques_actifs = Risk.objects.filter(statut=Risk.Statut.ACTIF).select_related("categorie", "direction").prefetch_related("evaluations")
+
+    profil = {"critique": 0, "eleve": 0, "modere": 0, "faible": 0}
+    risques_evalues = 0
+    hors_appetence = []
+    for risque in risques_actifs:
+        derniere = risque.derniere_evaluation
+        if not derniere:
+            continue
+        risques_evalues += 1
+        profil[derniere.niveau_residuel] += 1
+        if derniere.niveau_residuel in ("eleve", "critique"):
+            hors_appetence.append((risque, derniere))
+    hors_appetence.sort(key=lambda t: t[1].score_residuel, reverse=True)
+
+    incidents_par_statut = dict(Incident.objects.values_list("statut").annotate(total=Count("id")).order_by())
+    total_incidents_ouverts = sum(v for k, v in incidents_par_statut.items() if k != Incident.Statut.CLOTURE)
+
+    executions_en_retard = [e for e in ControleExecution.objects.select_related("controle", "controle__direction") if e.en_retard]
+    executions_sans_preuve = ControleExecution.objects.filter(
+        resultat=ControleExecution.Resultat.SANS_PREUVE
+    ).select_related("controle")
+
+    heatmap = {}
+    for risque, derniere in [(r, r.derniere_evaluation) for r in risques_actifs if r.derniere_evaluation]:
+        cle = (derniere.probabilite_residuelle, derniere.impact_residuel)
+        heatmap[cle] = heatmap.get(cle, 0) + 1
+
+    def couleur(score):
+        from apps.risks.models import classer_score
+        niveau = classer_score(score)
+        return {"critique": "#c0392b", "eleve": "#c78e51", "modere": "#5b8ba3", "faible": "#3c8558"}[niveau]
+
+    heatmap_matrix = []
+    for p in [5, 4, 3, 2, 1]:
+        ligne = [{"total": heatmap.get((p, i), 0), "couleur": couleur(p * i)} for i in [1, 2, 3, 4, 5]]
+        heatmap_matrix.append({"probabilite": p, "cellules": ligne})
+
+    return {
+        "risques_evalues": risques_evalues,
+        "hors_appetence": hors_appetence,
+        "total_hors_appetence": len(hors_appetence),
+        "total_incidents_ouverts": total_incidents_ouverts,
+        "executions_en_retard": executions_en_retard,
+        "total_controles_en_retard": len(executions_en_retard),
+        "executions_sans_preuve": executions_sans_preuve,
+        "profil": profil,
+        "heatmap_matrix": heatmap_matrix,
+        "niveaux": [1, 2, 3, 4, 5],
+    }
+
+
+@login_required
+def accueil(request):
+    return render(request, "dashboard/dashboard.html", _donnees_synthese())
+
+
+@login_required
+def analyse_interactive(request):
+    from apps.risks.models import Risk, RiskCategory, classer_score
+
+    categorie_id = request.GET.get("categorie")
+    direction_id = request.GET.get("direction")
+
+    risques = Risk.objects.filter(statut=Risk.Statut.ACTIF).select_related("categorie", "direction").prefetch_related("evaluations")
+    if categorie_id:
+        risques = risques.filter(categorie_id=categorie_id)
+    if direction_id:
+        risques = risques.filter(direction_id=direction_id)
+
+    profil = {"faible": 0, "modere": 0, "eleve": 0, "critique": 0}
+    par_categorie = {}
+    ecarts = []
+
+    for risque in risques:
+        derniere = risque.derniere_evaluation
+        if not derniere:
+            continue
+        profil[derniere.niveau_residuel] += 1
+        cat = risque.categorie.nom
+        par_categorie.setdefault(cat, []).append(derniere.score_residuel)
+        ecarts.append({
+            "risque": risque.titre,
+            "inherent": derniere.score_inherent,
+            "residuel": derniere.score_residuel,
+        })
+
+    moyenne_par_categorie = [
+        {"categorie": cat, "moyenne": round(sum(scores) / len(scores), 1)}
+        for cat, scores in par_categorie.items()
+    ]
+    moyenne_par_categorie.sort(key=lambda x: x["moyenne"], reverse=True)
+
+    ecarts.sort(key=lambda x: x["inherent"] - x["residuel"], reverse=True)
+    top_ecarts = ecarts[:10]
+
+    from apps.incidents.models import Incident
+    incidents_qs = Incident.objects.exclude(categorie_evenement="")
+    labels_evt = dict(Incident.CategorieEvenement.choices)
+    par_evenement = list(incidents_qs.values("categorie_evenement").annotate(total=Count("id")).order_by("-total"))
+    for l in par_evenement:
+        l["label"] = labels_evt.get(l["categorie_evenement"], l["categorie_evenement"])
+
+    from apps.accounts.models import Direction
+
+    return render(request, "dashboard/analyse_interactive.html", {
+        "categories": RiskCategory.objects.all(),
+        "directions": Direction.objects.all(),
+        "categorie_id": int(categorie_id) if categorie_id else None,
+        "direction_id": int(direction_id) if direction_id else None,
+        "profil_json": profil,
+        "moyenne_par_categorie_json": moyenne_par_categorie,
+        "top_ecarts_json": top_ecarts,
+        "par_evenement_json": par_evenement,
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def synthese_api(request):
+    """Version API (JSON) de la même synthèse, pour une future interface découplée."""
+    data = _donnees_synthese()
+    data["profil"] = data["profil"]
+    data["hors_appetence"] = [
+        {"id": r.pk, "titre": r.titre, "residuel": e.score_residuel, "niveau": e.niveau_residuel}
+        for r, e in data["hors_appetence"]
+    ]
+    data["executions_en_retard"] = [str(e) for e in data["executions_en_retard"]]
+    data.pop("heatmap_matrix", None)
+    return Response(data)

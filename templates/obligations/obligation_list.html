@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Échéances{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Calendrier réglementaire</h2>
+    <div class="subtitle">Suivi des obligations et échéances</div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <div class="btn-group mb-3">
+    <a href="{% url 'obligations:liste' %}" class="btn btn-rose-outline btn-sm">Toutes</a>
+    <a href="?statut=en_retard" class="btn btn-rose-outline btn-sm">En retard</a>
+    <a href="?statut=a_venir" class="btn btn-rose-outline btn-sm">À venir</a>
+    <a href="?statut=realisee" class="btn btn-rose-outline btn-sm">Réalisées</a>
+  </div>
+
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Obligation</th><th>Échéance</th><th>Périodicité</th><th>Responsable</th><th>État</th><th></th></tr></thead>
+    <tbody>
+      {% for e in echeances %}
+      <tr>
+        <td class="fw-semibold">{{ e.obligation.nom }}</td>
+        <td>{{ e.date_echeance|date:"d/m/Y" }}</td>
+        <td>{{ e.obligation.get_periodicite_display }}</td>
+        <td>{{ e.obligation.responsable }}</td>
+        <td>
+          <span class="pill {% if e.statut == 'en_retard' %}pill-critique{% elif e.statut == 'realisee' %}pill-faible{% else %}pill-eleve{% endif %}">
+            {{ e.get_statut_display }}
+          </span>
+        </td>
+        <td>
+          {% if e.statut != 'realisee' and peut_gerer_obligations or e.obligation.responsable_id == user.id %}
+            {% if e.statut != 'realisee' %}
+            <form method="post" action="{% url 'obligations:marquer_realisee' e.pk %}">
+              {% csrf_token %}
+              <button type="submit" class="btn btn-sm btn-rose-outline">Mettre à jour</button>
+            </form>
+            {% endif %}
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">Aucune échéance enregistrée. Exécutez la commande <code>generer_echeances</code>.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

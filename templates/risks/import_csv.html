@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Importer des risques{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div><h2>Importer des risques (Excel)</h2><div class="subtitle">Pour charger d'un coup une liste existante</div></div>
+</div>
+
+<div class="rose-panel" style="max-width:700px;">
+  <div class="d-flex align-items-center justify-content-between p-3 mb-3" style="background:var(--rose-modere-bg); border-radius:10px;">
+    <div>
+      <strong>Première étape : téléchargez le modèle</strong>
+      <p class="mb-0 small text-muted">Un fichier Excel avec les bonnes colonnes et un exemple rempli, prêt à compléter.</p>
+    </div>
+    <a href="{% url 'risks:import_modele' %}" class="btn btn-rose-primary btn-sm text-nowrap ms-3">
+      <i class="bi bi-download"></i> Télécharger le modèle
+    </a>
+  </div>
+
+  <p class="small text-muted">
+    Remplissez le modèle (une ligne = un risque), puis importez-le ci-dessous. Les catégories et directions citées mais inconnues du logiciel sont créées automatiquement — pas besoin de les préparer à l'avance.
+    Cet import crée les risques ; il ne crée pas d'évaluation (à faire ensuite, risque par risque, via « Évaluer »).
+  </p>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label">{{ field.label }}</label>
+      {{ field }}
+      {% if field.help_text %}<div class="form-text small">{{ field.help_text }}</div>{% endif %}
+      {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-rose-primary">Importer</button>
+    <a href="{% url 'risks:liste' %}" class="btn btn-link">Annuler</a>
+  </form>
+
+  {% if resume %}
+  <div class="mt-3 pt-3 border-top">
+    <p class="mb-1"><strong>{{ resume.crees }}</strong> risque(s) créé(s).</p>
+    {% if resume.erreurs %}
+    <p class="text-danger small mb-0">
+      {% for e in resume.erreurs %}{{ e }}<br>{% endfor %}
+    </p>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

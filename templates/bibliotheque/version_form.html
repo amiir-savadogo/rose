@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle version{% endblock %}
+{% block content %}
+<h2 class="mb-4" style="font-size:1.3rem;">Nouvelle version — {{ document.titre }}</h2>
+<div class="rose-panel" style="max-width:600px;">
+  {% with derniere=document.derniere_version %}
+  {% if derniere %}
+  <p class="small text-muted">Version actuelle en vigueur : <strong>v{{ derniere.version }}</strong> (approuvée le {{ derniere.date_approbation|date:"d/m/Y" }}). Elle restera consultable dans l'historique après l'ajout de la nouvelle version.</p>
+  {% endif %}
+  {% endwith %}
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="mb-3">
+      <label class="form-label">{{ field.label }}</label>
+      {{ field }}
+      {% if field.errors %}<div class="text-danger small">{{ field.errors }}</div>{% endif %}
+    </div>
+    {% endfor %}
+    <button type="submit" class="btn btn-rose-primary">Déposer cette version</button>
+    <a href="{% url 'bibliotheque:detail' document.pk %}" class="btn btn-link">Annuler</a>
+  </form>
+</div>
+{% endblock %}

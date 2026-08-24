@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Risques{% endblock %}
+{% block aide_titre %}Coter un risque en trois niveaux{% endblock %}
+{% block aide %}
+<p>Rose évalue un risque en trois temps, et non deux.</p>
+<p class="fw-bold mb-1">Les trois termes</p>
+<ul>
+  <li><strong>Risque inhérent</strong> : probabilité × impact, avant tout dispositif</li>
+  <li><strong>Qualité du dispositif de maîtrise</strong> : de 1 (inexistant) à 5 (optimal)</li>
+  <li><strong>Risque résiduel</strong>, calculé : ce qui subsiste une fois les contrôles pris en compte</li>
+</ul>
+<p class="fw-bold mb-1">Pourquoi trois et non deux</p>
+<p>N'afficher que le résiduel masque l'apport des contrôles et empêche donc de justifier leur coût. N'afficher que l'inhérent alarme sans rendre compte de ce qui a déjà été fait. C'est l'écart entre les deux qui constitue l'information de pilotage.</p>
+<p class="fw-bold mb-1">Marche à suivre</p>
+<ul class="mb-0">
+  <li>ouvrez la fiche du risque, puis « Évaluer »</li>
+  <li>justifiez la cotation : c'est cette justification que lira l'auditeur</li>
+</ul>
+{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Cartographie des risques</h2>
+    <div class="subtitle">{{ risques|length }} risque(s)</div>
+  </div>
+  <div>
+    <a href="{% url 'risks:export_xlsx' %}" class="btn btn-rose-outline">Exporter Excel</a>
+    {% if peut_gerer_risques %}<a href="{% url 'risks:import_csv' %}" class="btn btn-rose-outline">Importer Excel</a>{% endif %}
+    <a href="{% url 'risks:matrice' %}" class="btn btn-rose-outline">Vue matricielle</a>
+    {% if peut_gerer_risques %}<a href="{% url 'risks:creer' %}" class="btn btn-rose-primary">+ Risque</a>{% endif %}
+  </div>
+</div>
+
+<div class="rose-panel">
+  <form method="get" class="row g-3 align-items-end mb-3">
+    <div class="col-md-3">
+      <label class="form-label small">Entité</label>
+      <select name="direction" class="form-select">
+        <option value="">Toutes</option>
+        {% for d in toutes_directions %}
+        <option value="{{ d.pk }}" {% if request.GET.direction == d.pk|stringformat:"s" %}selected{% endif %}>{{ d.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small">Catégorie</label>
+      <select name="categorie" class="form-select">
+        <option value="">Toutes</option>
+        {% for c in toutes_categories %}
+        <option value="{{ c.pk }}" {% if request.GET.categorie == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Niveau résiduel</label>
+      <select name="niveau" class="form-select">
+        <option value="">Tous</option>
+        <option value="critique" {% if request.GET.niveau == "critique" %}selected{% endif %}>Critique</option>
+        <option value="eleve" {% if request.GET.niveau == "eleve" %}selected{% endif %}>Élevé</option>
+        <option value="modere" {% if request.GET.niveau == "modere" %}selected{% endif %}>Modéré</option>
+        <option value="faible" {% if request.GET.niveau == "faible" %}selected{% endif %}>Faible</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Recherche</label>
+      <input type="text" name="q" class="form-control" placeholder="Intitulé du risque" value="{{ request.GET.q|default:'' }}">
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-rose-primary">Filtrer</button>
+      <a href="{% url 'risks:liste' %}" class="btn btn-rose-outline">Réinitialiser</a>
+    </div>
+  </form>
+
+  <div class="btn-group mb-3">
+    <a href="{% url 'risks:liste' %}" class="btn btn-rose-outline btn-sm">Tous</a>
+    <a href="?statut=actif" class="btn btn-rose-outline btn-sm">Actifs</a>
+    <a href="?statut=maitrise" class="btn btn-rose-outline btn-sm">Maîtrisés</a>
+    <a href="?statut=cloture" class="btn btn-rose-outline btn-sm">Clôturés</a>
+  </div>
+
+  <table class="table rose-table mb-0">
+    <thead>
+      <tr><th>Code</th><th>Risque</th><th>Processus</th><th>Entité</th><th>Inhérent</th><th>Maîtrise</th><th>Résiduel</th><th>Niveau</th></tr>
+    </thead>
+    <tbody>
+      {% for risque in risques %}
+      {% with derniere=risque.derniere_evaluation %}
+      <tr onclick="window.location='{% url 'risks:detail' risque.pk %}'" style="cursor:pointer;">
+        <td class="text-muted">R-{{ risque.pk|stringformat:"03d" }}</td>
+        <td class="fw-semibold">{{ risque.titre }}</td>
+        <td>{{ risque.processus|default:"—" }}</td>
+        <td>{{ risque.direction|default:"—" }}</td>
+        <td>{% if derniere %}{{ derniere.score_inherent }}{% else %}—{% endif %}</td>
+        <td>{% if derniere %}{{ derniere.qualite_dispositif_maitrise }}/5{% else %}—{% endif %}</td>
+        <td>{% if derniere %}{{ derniere.score_residuel }}{% else %}—{% endif %}</td>
+        <td>
+          {% if derniere %}
+            <span class="pill pill-{{ derniere.niveau_residuel }}">{{ derniere.niveau_residuel_display }}</span>
+          {% else %}
+            <span class="pill pill-neutral">Non évalué</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endwith %}
+      {% empty %}
+      <tr><td colspan="8" class="text-center text-muted py-4">Aucun risque enregistré pour le moment.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% if is_paginated %}
+<nav>
+  <ul class="pagination">
+    {% if page_obj.has_previous %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Précédent</a></li>{% endif %}
+    <li class="page-item disabled"><span class="page-link">Page {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+    {% if page_obj.has_next %}<li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Suivant</a></li>{% endif %}
+  </ul>
+</nav>
+{% endif %}
+{% endblock %}

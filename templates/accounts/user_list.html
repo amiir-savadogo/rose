@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Utilisateurs</h2>
+    <div class="subtitle">{{ utilisateurs|length }} compte(s)</div>
+  </div>
+  <a href="{% url 'accounts:utilisateur_creer' %}" class="btn btn-rose-primary">+ Utilisateur</a>
+</div>
+
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Identifiant</th><th>Nom</th><th>Rôle</th><th>Direction</th><th>Actif</th><th></th></tr></thead>
+    <tbody>
+      {% for u in utilisateurs %}
+      <tr>
+        <td>{{ u.username }}</td>
+        <td>{{ u.get_full_name|default:"—" }}</td>
+        <td><span class="pill pill-neutral">{{ u.get_role_display }}</span></td>
+        <td>{{ u.direction|default:"—" }}</td>
+        <td>{% if u.is_active %}<span class="pill pill-faible">Actif</span>{% else %}<span class="pill pill-critique">Désactivé</span>{% endif %}</td>
+        <td>
+          <a href="{% url 'accounts:utilisateur_modifier' u.pk %}" class="small">Modifier</a> ·
+          <a href="{% url 'accounts:reinitialiser_mot_de_passe' u.pk %}" class="small">Mot de passe</a>
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="6" class="text-center text-muted py-4">Aucun utilisateur.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

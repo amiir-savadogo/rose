@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Analyse des incidents{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Analyse des incidents</h2>
+    <div class="subtitle">{{ total_incidents }} incident(s) recensé(s)</div>
+  </div>
+  <a href="{% url 'incidents:liste' %}" class="btn btn-rose-outline">Registre</a>
+</div>
+
+{% if risques_sous_cotes %}
+<div class="rose-panel" style="border-left:4px solid var(--rose-eleve-text);">
+  <strong>Risques probablement sous-cotés</strong>
+  <p class="text-muted small mb-2">Ces incidents sont rattachés à des risques cotés faibles ou modérés. Un risque qui produit des incidents est mal coté : c'est le rapprochement le plus utile à porter devant le comité.</p>
+  <ul class="mb-0">
+    {% for item in risques_sous_cotes %}
+    <li><a href="{% url 'risks:detail' item.risque.pk %}">R-{{ item.risque.pk|stringformat:"03d" }} — {{ item.risque.titre }}</a> ({{ item.nb_incidents }} incident{{ item.nb_incidents|pluralize }})</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Par catégorie d'événement</div>
+      <table class="table rose-table mb-0">
+        {% for ligne in par_categorie %}
+        <tr><td>{{ ligne.label }}</td><td class="text-end">{{ ligne.total }}</td></tr>
+        {% empty %}
+        <tr><td class="text-muted">Aucune catégorie renseignée.</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="rose-panel">
+      <div class="rose-section-label">Par processus</div>
+      <table class="table rose-table mb-0">
+        {% for ligne in par_processus %}
+        <tr><td>{{ ligne.processus_concerne }}</td><td class="text-end">{{ ligne.total }}</td></tr>
+        {% empty %}
+        <tr><td class="text-muted">Aucun processus renseigné.</td></tr>
+        {% endfor %}
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <div class="rose-section-label">Pertes cumulées</div>
+  <div class="row g-3">
+    <div class="col-md-4">
+      <div class="rose-kpi"><div class="label">Perte brute cumulée (FCFA)</div><div class="value">{{ perte_brute }}</div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="rose-kpi"><div class="label">Récupérations (FCFA)</div><div class="value">{{ recuperation }}</div></div>
+    </div>
+    <div class="col-md-4">
+      <div class="rose-kpi"><div class="label">Perte nette (FCFA)</div><div class="value">{{ perte_nette }}</div></div>
+    </div>
+  </div>
+</div>
+{% endblock %}

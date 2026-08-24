@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Plans d'action{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Plans d'action</h2>
+    <div class="subtitle">Tout ce qui reste à faire, quelle qu'en soit l'origine</div>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <form method="get" class="row g-3 align-items-end mb-3">
+    <div class="col-md-3">
+      <label class="form-label small">Origine</label>
+      <select name="origine" class="form-select">
+        <option value="">Toutes</option>
+        <option value="risque" {% if request.GET.origine == "risque" %}selected{% endif %}>Cartographie des risques</option>
+        <option value="incident" {% if request.GET.origine == "incident" %}selected{% endif %}>Incident</option>
+        <option value="audit_interne" {% if request.GET.origine == "audit_interne" %}selected{% endif %}>Audit interne</option>
+        <option value="autorite_supervision" {% if request.GET.origine == "autorite_supervision" %}selected{% endif %}>Autorité de supervision</option>
+        <option value="autre" {% if request.GET.origine == "autre" %}selected{% endif %}>Autre</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small">Statut</label>
+      <select name="statut" class="form-select">
+        <option value="">Tous</option>
+        <option value="a_lancer" {% if request.GET.statut == "a_lancer" %}selected{% endif %}>À lancer</option>
+        <option value="en_cours" {% if request.GET.statut == "en_cours" %}selected{% endif %}>En cours</option>
+        <option value="en_retard" {% if request.GET.statut == "en_retard" %}selected{% endif %}>En retard</option>
+        <option value="clos" {% if request.GET.statut == "clos" %}selected{% endif %}>Clos</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-rose-primary">Filtrer</button>
+      <a href="{% url 'risks:plans_action' %}" class="btn btn-rose-outline">Réinitialiser</a>
+    </div>
+  </form>
+
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Réf.</th><th>Action</th><th>Origine</th><th>Responsable</th><th>Échéance</th><th>Avancement</th><th>Statut</th><th></th></tr></thead>
+    <tbody>
+      {% for a in actions %}
+      <tr>
+        <td class="text-muted">PA-{{ a.pk|stringformat:"03d" }}</td>
+        <td class="fw-semibold">{{ a.description|truncatechars:50 }}</td>
+        <td><span class="pill pill-neutral">{{ a.get_origine_display }}</span></td>
+        <td>{{ a.responsable }}</td>
+        <td>{{ a.echeance|date:"d/m/Y" }}</td>
+        <td style="min-width:100px;">
+          <div class="progress" style="height:8px;">
+            <div class="progress-bar" role="progressbar" style="width:{{ a.avancement }}%; background-color:var(--rose-green);"></div>
+          </div>
+          <span class="text-muted small">{{ a.avancement }}%</span>
+        </td>
+        <td>
+          <span class="pill {% if a.statut == 'clos' %}pill-faible{% elif a.statut == 'en_retard' %}pill-critique{% elif a.statut == 'en_cours' %}pill-eleve{% else %}pill-neutral{% endif %}">
+            {{ a.get_statut_display }}
+          </span>
+        </td>
+        <td><a href="{% url 'risks:plan_action_modifier' a.pk %}" class="small">Modifier</a></td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="8" class="text-center text-muted py-4">Aucun plan d'action.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

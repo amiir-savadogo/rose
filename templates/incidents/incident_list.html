@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Incidents{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Incidents et pertes</h2>
+    <div class="subtitle">{{ incidents|length }} incident(s) recensé(s)</div>
+  </div>
+  <div>
+    <a href="{% url 'incidents:analyse' %}" class="btn btn-rose-outline">Analyse</a>
+    <a href="{% url 'incidents:creer' %}" class="btn btn-rose-primary">+ Déclarer</a>
+  </div>
+</div>
+
+<div class="rose-panel">
+  <form method="get" class="row g-3 align-items-end mb-3">
+    <div class="col-md-3">
+      <label class="form-label small">Statut</label>
+      <select name="statut" class="form-select">
+        <option value="">Tous</option>
+        <option value="declare" {% if request.GET.statut == "declare" %}selected{% endif %}>Déclaré</option>
+        <option value="en_analyse" {% if request.GET.statut == "en_analyse" %}selected{% endif %}>En analyse</option>
+        <option value="en_traitement" {% if request.GET.statut == "en_traitement" %}selected{% endif %}>En traitement</option>
+        <option value="cloture" {% if request.GET.statut == "cloture" %}selected{% endif %}>Clôturé</option>
+      </select>
+    </div>
+    <div class="col-md-3">
+      <label class="form-label small">Gravité</label>
+      <select name="gravite" class="form-select">
+        <option value="">Toutes</option>
+        <option value="mineure" {% if request.GET.gravite == "mineure" %}selected{% endif %}>Mineure</option>
+        <option value="moderee" {% if request.GET.gravite == "moderee" %}selected{% endif %}>Modérée</option>
+        <option value="majeure" {% if request.GET.gravite == "majeure" %}selected{% endif %}>Majeure</option>
+        <option value="critique" {% if request.GET.gravite == "critique" %}selected{% endif %}>Critique</option>
+      </select>
+    </div>
+    <div class="col-md-2">
+      <button type="submit" class="btn btn-rose-primary">Filtrer</button>
+      <a href="{% url 'incidents:liste' %}" class="btn btn-rose-outline">Réinitialiser</a>
+    </div>
+  </form>
+
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Référence</th><th>Incident</th><th>Entité</th><th>Survenance</th><th>Détection</th><th>Gravité</th><th>Délai</th><th>Statut</th><th>Assigné à</th></tr></thead>
+    <tbody>
+      {% for incident in incidents %}
+      <tr onclick="window.location='{% url 'incidents:detail' incident.pk %}'" style="cursor:pointer;">
+        <td class="text-muted">INC-{{ incident.pk|stringformat:"03d" }}</td>
+        <td class="fw-semibold">{{ incident.titre }}</td>
+        <td>{{ incident.direction|default:"—" }}</td>
+        <td>{{ incident.date_survenue|date:"d/m/Y" }}</td>
+        <td>{{ incident.date_detection|date:"d/m/Y"|default:"—" }}</td>
+        <td>
+          <span class="pill {% if incident.gravite == 'critique' %}pill-critique{% elif incident.gravite == 'majeure' %}pill-eleve{% elif incident.gravite == 'moderee' %}pill-modere{% else %}pill-neutral{% endif %}">
+            {{ incident.get_gravite_display }}
+          </span>
+        </td>
+        <td>{% if incident.delai_detection_jours is not None %}+ {{ incident.delai_detection_jours }} j{% else %}—{% endif %}</td>
+        <td><span class="pill pill-neutral">{{ incident.get_statut_display }}</span></td>
+        <td>{{ incident.assigne_a|default:"—" }}</td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="9" class="text-center text-muted py-4">Aucun incident déclaré pour le moment.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

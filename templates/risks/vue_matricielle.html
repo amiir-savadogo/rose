@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Vue matricielle{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Cartographie — vue matricielle</h2>
+    <div class="subtitle">Risque résiduel le plus élevé par croisement processus × entité</div>
+  </div>
+  <a href="{% url 'risks:liste' %}" class="btn btn-rose-outline">Vue liste</a>
+</div>
+
+<div class="rose-panel">
+  <p class="text-muted small">Chaque case porte le risque résiduel le plus élevé du croisement. Une case vide signifie qu'aucun risque n'y est cartographié.</p>
+  <div class="table-responsive">
+  <table class="table rose-table mb-0 text-center">
+    <thead>
+      <tr><th class="text-start">Processus</th>{% for d in directions %}<th>{{ d }}</th>{% endfor %}</tr>
+    </thead>
+    <tbody>
+      {% for ligne in lignes %}
+      <tr>
+        <td class="text-start fw-semibold">{{ ligne.processus }}</td>
+        {% for cellule in ligne.cellules %}
+        <td>
+          {% if cellule %}
+          <a href="{% url 'risks:detail' cellule.risque.pk %}" class="pill pill-{{ cellule.niveau }}" style="text-decoration:none;">{{ cellule.score }}</a>
+          {% else %}
+          <span class="text-muted">·</span>
+          {% endif %}
+        </td>
+        {% endfor %}
+      </tr>
+      {% empty %}
+      <tr><td colspan="10" class="text-center text-muted py-4">Pas assez de données (processus/évaluations) pour construire la matrice.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endblock %}
