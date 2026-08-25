@@ -11,7 +11,7 @@
 
 <div class="rose-panel">
   <table class="table rose-table mb-0">
-    <thead><tr><th>Contrôle</th><th>Entité</th><th>Date prévue</th><th>Date réalisée</th><th>Résultat</th><th>Preuve</th><th></th></tr></thead>
+    <thead><tr><th>Contrôle</th><th>Entité</th><th>Prévu</th><th>Réalisé</th><th>Résultat</th><th>Preuve</th><th></th></tr></thead>
     <tbody>
       {% for e in executions %}
       <tr>
@@ -24,8 +24,12 @@
             {{ e.get_resultat_display }}
           </span>
         </td>
-        <td>{% if e.preuve %}<a href="{{ e.preuve.url }}" target="_blank"><i class="bi bi-paperclip"></i></a>{% else %}—{% endif %}</td>
-        <td><a href="{% url 'controles:renseigner' e.pk %}" class="small">Renseigner</a></td>
+        <td>
+          {% if e.preuve %}<a href="{{ e.preuve.url }}" target="_blank"><i class="bi bi-download"></i></a>
+          {% elif e.preuve_manquante %}<span class="pill pill-eleve">Manquante</span>
+          {% else %}—{% endif %}
+        </td>
+        <td><a href="{% url 'controles:renseigner' e.pk %}" class="small">Saisir</a></td>
       </tr>
       {% empty %}
       <tr><td colspan="7" class="text-center text-muted py-4">Aucune exécution programmée.</td></tr>

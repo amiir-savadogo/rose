@@ -18,6 +18,17 @@ class ControleForm(forms.ModelForm):
             "superviseur": forms.Select(attrs={"class": "form-select"}),
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        executant = cleaned_data.get("executant")
+        superviseur = cleaned_data.get("superviseur")
+        if executant and superviseur and executant == superviseur:
+            raise forms.ValidationError(
+                "L'exécutant et le superviseur doivent être deux personnes différentes — "
+                "c'est la séparation des tâches qui donne sa valeur au contrôle."
+            )
+        return cleaned_data
+
 
 class ProgrammerExecutionForm(forms.Form):
     date_prevue = forms.DateField(widget=forms.DateInput(attrs={"class": "form-control", "type": "date"}), label="Date prévue")

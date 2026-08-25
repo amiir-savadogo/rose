@@ -24,7 +24,7 @@
           {% if c.statut == "ouverte" %}
           <form method="post" action="{% url 'risks:campagne_cloturer' c.pk %}" onsubmit="return confirm('Clôturer cette campagne ? Ses évaluations seront figées.');">
             {% csrf_token %}
-            <button type="submit" class="btn btn-sm btn-rose-outline">Clôturer</button>
+            <button type="submit" class="btn btn-sm btn-rose-success">Clôturer</button>
           </form>
           {% endif %}
         </td>

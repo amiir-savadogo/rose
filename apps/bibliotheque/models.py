@@ -84,3 +84,30 @@ class DocumentVersion(models.Model):
 
     def delete(self, *args, **kwargs):
         raise PermissionError("Une version archivée ne peut pas être supprimée.")
+
+
+class DocumentAttendu(models.Model):
+    """Un document que l'institution s'attend à posséder (corpus attendu),
+    qu'il existe déjà ou non dans la bibliothèque — c'est le rapprochement
+    entre les deux qui révèle les absences, pas seulement ce qui est présent."""
+
+    titre = models.CharField(max_length=200)
+    nature = models.CharField(max_length=20, choices=Document.Nature.choices)
+    document = models.ForeignKey(
+        Document, null=True, blank=True, on_delete=models.SET_NULL, related_name="correspond_a",
+        help_text="Rattachez le document réel de la bibliothèque une fois qu'il existe",
+    )
+
+    class Meta:
+        verbose_name = "Document attendu (corpus)"
+        verbose_name_plural = "Corpus documentaire attendu"
+        ordering = ["titre"]
+
+    def __str__(self):
+        return self.titre
+
+    @property
+    def etat(self):
+        if not self.document:
+            return "manquant"
+        return self.document.etat

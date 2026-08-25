@@ -1,6 +1,6 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.generic import CreateView, ListView
@@ -9,8 +9,8 @@ from apps.accounts.permissions import peut_gerer_risques
 from apps.controles.models import ControleExecution
 from apps.incidents.models import Incident
 from apps.risks.models import Risk
-from .forms import SeanceComiteForm
-from .models import SeanceComite
+from .forms import DecisionComiteForm, ExecuterDecisionForm, SeanceComiteForm
+from .models import DecisionComite, SeanceComite
 
 
 class SeanceListView(LoginRequiredMixin, ListView):
@@ -52,9 +52,57 @@ def dossier_seance(request, pk):
 
     controles_retard = [e for e in ControleExecution.objects.select_related("controle") if e.en_retard]
 
+    # Décisions non exécutées de TOUTES les séances antérieures — c'est ce qui donne
+    # sa mémoire au comité : il ne redécouvre pas à chaque fois qu'une décision dort.
+    decisions_en_attente = DecisionComite.objects.filter(
+        seance__date_seance__lt=seance.date_seance,
+    ).exclude(statut=DecisionComite.Statut.EXECUTEE).select_related("seance", "responsable")
+
     return render(request, "comite/dossier.html", {
         "seance": seance,
         "risques_hors_appetence": risques_hors_appetence,
         "incidents_periode": incidents_periode,
         "controles_retard": controles_retard,
+        "decisions_seance": seance.decisions.select_related("responsable").all(),
+        "decisions_en_attente": decisions_en_attente,
+        "peut_gerer": peut_gerer_risques(request.user),
     })
+
+
+def ajouter_decision(request, pk):
+    seance = get_object_or_404(SeanceComite, pk=pk)
+    if not peut_gerer_risques(request.user):
+        messages.error(request, "Vous n'avez pas les droits pour ajouter une décision.")
+        return redirect("comite:dossier", pk=pk)
+
+    if request.method == "POST":
+        form = DecisionComiteForm(request.POST)
+        if form.is_valid():
+            decision = form.save(commit=False)
+            decision.seance = seance
+            decision.save()
+            messages.success(request, "Décision ajoutée.")
+            return redirect("comite:dossier", pk=pk)
+    else:
+        form = DecisionComiteForm()
+
+    return render(request, "comite/decision_form.html", {"form": form, "seance": seance})
+
+
+def executer_decision(request, pk):
+    decision = get_object_or_404(DecisionComite, pk=pk)
+    if not peut_gerer_risques(request.user):
+        messages.error(request, "Vous n'avez pas les droits pour clôturer cette décision.")
+        return redirect("comite:dossier", pk=decision.seance_id)
+
+    if request.method == "POST":
+        form = ExecuterDecisionForm(request.POST)
+        if form.is_valid():
+            decision.date_execution = form.cleaned_data["date_execution"]
+            decision.save()
+            messages.success(request, "Décision marquée comme exécutée.")
+            return redirect("comite:dossier", pk=decision.seance_id)
+    else:
+        form = ExecuterDecisionForm(initial={"date_execution": timezone.now().date()})
+
+    return render(request, "comite/executer_decision_form.html", {"form": form, "decision": decision})

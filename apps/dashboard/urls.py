@@ -8,4 +8,5 @@ urlpatterns = [
     path("", views.accueil, name="accueil"),
     path("analyse-interactive/", views.analyse_interactive, name="analyse_interactive"),
     path("api/synthese/", views.synthese_api, name="synthese_api"),
+    path("perimetre/", views.perimetre_produit, name="perimetre"),
 ]

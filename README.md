@@ -70,5 +70,3 @@ Administrateur a toujours tous les droits (garde-fou volontaire, pour ne jamais 
 2. Créer un compte administrateur et quelques catégories de risques de test.
 3. Construire les vues/templates (ou une API DRF complète) pour les formulaires de saisie métier — l'admin Django sert de back-office temporaire en attendant.
 4. Ajouter l'authentification à deux facteurs et l'intégration OpenID Connect (prévues en V2 dans le cahier des charges).
-"# rose" 
-"# rose" 

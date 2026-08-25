@@ -18,7 +18,9 @@ class IncidentListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
+        from apps.accounts.perimetre import filtrer_par_perimetre
         qs = Incident.objects.select_related("declare_par", "assigne_a").all()
+        qs = filtrer_par_perimetre(qs, self.request.user, champ="direction")
         statut = self.request.GET.get("statut")
         gravite = self.request.GET.get("gravite")
         if statut:
@@ -32,6 +34,10 @@ class IncidentDetailView(LoginRequiredMixin, DetailView):
     model = Incident
     template_name = "incidents/incident_detail.html"
     context_object_name = "incident"
+
+    def get_queryset(self):
+        from apps.accounts.perimetre import filtrer_par_perimetre
+        return filtrer_par_perimetre(Incident.objects.all(), self.request.user, champ="direction")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Document, DocumentVersion
+from .models import Document, DocumentAttendu, DocumentVersion
 
 
 class DocumentForm(forms.ModelForm):
@@ -42,4 +42,15 @@ class DocumentVersionForm(forms.ModelForm):
             "date_approbation": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "revue_prevue": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "note_revision": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Qu'est-ce qui a changé ?"}),
+        }
+
+
+class DocumentAttenduForm(forms.ModelForm):
+    class Meta:
+        model = DocumentAttendu
+        fields = ["titre", "nature", "document"]
+        widgets = {
+            "titre": forms.TextInput(attrs={"class": "form-control"}),
+            "nature": forms.Select(attrs={"class": "form-select"}),
+            "document": forms.Select(attrs={"class": "form-select"}),
         }

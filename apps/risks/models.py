@@ -204,12 +204,23 @@ class ActionPlan(models.Model):
 
 
 class KeyRiskIndicator(models.Model):
-    """Indicateur clé de risque (KRI) rattaché à un risque, avec seuil d'alerte."""
+    """Indicateur clé de risque (KRI) rattaché à un risque.
+
+    Porte deux seuils — alerte (avertissement précoce) et limite (franchissement
+    grave) — et un sens de variation, car un même chiffre est bon ou mauvais
+    selon l'indicateur (un taux de créances douteuses est mauvais s'il monte,
+    un taux de disponibilité est mauvais s'il descend)."""
+
+    class Sens(models.TextChoices):
+        HAUSSE = "hausse", "Le risque croît avec la valeur"
+        BAISSE = "baisse", "Le risque décroît avec la valeur"
 
     risque = models.ForeignKey(Risk, on_delete=models.CASCADE, related_name="indicateurs")
     nom = models.CharField(max_length=200)
     unite = models.CharField(max_length=50, blank=True, help_text="ex: nombre, %, FCFA")
+    sens = models.CharField(max_length=10, choices=Sens.choices, default=Sens.HAUSSE)
     seuil_alerte = models.DecimalField(max_digits=12, decimal_places=2)
+    seuil_limite = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Seuil de franchissement grave, au-delà du seuil d'alerte")
     valeur_actuelle = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     maj_le = models.DateTimeField(auto_now=True)
 
@@ -221,7 +232,23 @@ class KeyRiskIndicator(models.Model):
         return f"{self.nom} — {self.risque}"
 
     @property
-    def en_alerte(self):
+    def etat(self):
+        """Trois états, pas deux : dans les limites / alerte / limite franchie."""
         if self.valeur_actuelle is None:
-            return False
-        return self.valeur_actuelle >= self.seuil_alerte
+            return "inconnu"
+        v = self.valeur_actuelle
+        if self.sens == self.Sens.HAUSSE:
+            if v >= self.seuil_limite:
+                return "limite_franchie"
+            if v >= self.seuil_alerte:
+                return "alerte"
+        else:
+            if v <= self.seuil_limite:
+                return "limite_franchie"
+            if v <= self.seuil_alerte:
+                return "alerte"
+        return "dans_les_limites"
+
+    @property
+    def en_alerte(self):
+        return self.etat in ("alerte", "limite_franchie")

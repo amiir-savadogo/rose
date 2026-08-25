@@ -35,7 +35,7 @@
             {% if e.statut != 'realisee' %}
             <form method="post" action="{% url 'obligations:marquer_realisee' e.pk %}">
               {% csrf_token %}
-              <button type="submit" class="btn btn-sm btn-rose-outline">Mettre à jour</button>
+              <button type="submit" class="btn btn-sm btn-rose-success">Mettre à jour</button>
             </form>
             {% endif %}
           {% endif %}

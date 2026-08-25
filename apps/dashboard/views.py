@@ -32,9 +32,10 @@ def _donnees_synthese():
     total_incidents_ouverts = sum(v for k, v in incidents_par_statut.items() if k != Incident.Statut.CLOTURE)
 
     executions_en_retard = [e for e in ControleExecution.objects.select_related("controle", "controle__direction") if e.en_retard]
-    executions_sans_preuve = ControleExecution.objects.filter(
-        resultat=ControleExecution.Resultat.SANS_PREUVE
-    ).select_related("controle")
+    executions_sans_preuve = [
+        e for e in ControleExecution.objects.select_related("controle").exclude(resultat=ControleExecution.Resultat.NON_REALISE)
+        if e.preuve_manquante
+    ]
 
     heatmap = {}
     for risque, derniere in [(r, r.derniere_evaluation) for r in risques_actifs if r.derniere_evaluation]:
@@ -44,7 +45,7 @@ def _donnees_synthese():
     def couleur(score):
         from apps.risks.models import classer_score
         niveau = classer_score(score)
-        return {"critique": "#c0392b", "eleve": "#c78e51", "modere": "#5b8ba3", "faible": "#3c8558"}[niveau]
+        return {"critique": "#9b2c2c", "eleve": "#b85c2e", "modere": "#b9791e", "faible": "#0d7377"}[niveau]
 
     heatmap_matrix = []
     for p in [5, 4, 3, 2, 1]:
@@ -68,6 +69,11 @@ def _donnees_synthese():
 @login_required
 def accueil(request):
     return render(request, "dashboard/dashboard.html", _donnees_synthese())
+
+
+@login_required
+def perimetre_produit(request):
+    return render(request, "dashboard/perimetre.html")
 
 
 @login_required

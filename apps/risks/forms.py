@@ -52,11 +52,13 @@ class ActionPlanForm(forms.ModelForm):
 class KeyRiskIndicatorForm(forms.ModelForm):
     class Meta:
         model = KeyRiskIndicator
-        fields = ["nom", "unite", "seuil_alerte", "valeur_actuelle"]
+        fields = ["nom", "unite", "sens", "seuil_alerte", "seuil_limite", "valeur_actuelle"]
         widgets = {
             "nom": forms.TextInput(attrs={"class": "form-control"}),
             "unite": forms.TextInput(attrs={"class": "form-control"}),
+            "sens": forms.Select(attrs={"class": "form-select"}),
             "seuil_alerte": forms.NumberInput(attrs={"class": "form-control"}),
+            "seuil_limite": forms.NumberInput(attrs={"class": "form-control"}),
             "valeur_actuelle": forms.NumberInput(attrs={"class": "form-control"}),
         }
 

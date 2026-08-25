@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}Complétude documentaire{% endblock %}
+{% block aide_titre %}Dire ce qui manque{% endblock %}
+{% block aide %}
+<p>Retrouver un document existant se fait avec un explorateur de fichiers. Constater une absence est autrement plus utile — c'est ce qu'un contrôle vérifie en premier.</p>
+{% endblock %}
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Complétude du corpus documentaire</h2>
+    <div class="subtitle">{{ nb_manquants }} manquant{{ nb_manquants|pluralize }} · {{ nb_a_revoir }} à revoir</div>
+  </div>
+  <div>
+    <a href="{% url 'bibliotheque:liste' %}" class="btn btn-rose-outline">Bibliothèque</a>
+    {% if peut_gerer %}<a href="{% url 'bibliotheque:completude_ajouter' %}" class="btn btn-rose-primary">+ Document attendu</a>{% endif %}
+  </div>
+</div>
+
+<div class="rose-panel" style="border-left:4px solid var(--rose-modere-text);">
+  <p class="mb-0 small">Le corpus attendu est confronté aux documents réellement présents dans la bibliothèque.</p>
+</div>
+
+<div class="rose-panel">
+  <table class="table rose-table mb-0">
+    <thead><tr><th>Document attendu</th><th>Nature</th><th>État</th><th>Version en vigueur</th></tr></thead>
+    <tbody>
+      {% for a in attendus %}
+      <tr>
+        <td class="fw-semibold">{{ a.titre }}</td>
+        <td class="text-muted">{{ a.get_nature_display }}</td>
+        <td>
+          {% if a.etat == 'manquant' %}<span class="pill pill-critique">Manquant</span>
+          {% elif a.etat == 'en_retard' %}<span class="pill pill-eleve">Revue en retard</span>
+          {% elif a.etat == 'proche' %}<span class="pill pill-eleve">Revue proche</span>
+          {% else %}<span class="pill pill-faible">Présent</span>{% endif %}
+        </td>
+        <td>
+          {% if a.document and a.document.derniere_version %}
+          v{{ a.document.derniere_version.version }} — approuvée le {{ a.document.derniere_version.date_approbation|date:"d/m/Y" }}
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr><td colspan="4" class="text-center text-muted py-4">Aucun corpus attendu défini pour le moment.</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

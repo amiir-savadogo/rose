@@ -16,7 +16,9 @@ class ControleListView(LoginRequiredMixin, ListView):
     context_object_name = "controles"
 
     def get_queryset(self):
-        return Controle.objects.filter(actif=True).select_related("executant", "superviseur", "risque")
+        from apps.accounts.perimetre import filtrer_par_perimetre
+        qs = Controle.objects.filter(actif=True).select_related("executant", "superviseur", "risque", "direction")
+        return filtrer_par_perimetre(qs, self.request.user, champ="direction")
 
 
 class ControleCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
@@ -39,7 +41,9 @@ class ExecutionListView(LoginRequiredMixin, ListView):
     paginate_by = 30
 
     def get_queryset(self):
-        return ControleExecution.objects.select_related("controle").order_by("-date_prevue")
+        from apps.accounts.perimetre import filtrer_par_perimetre
+        qs = ControleExecution.objects.select_related("controle", "controle__direction").order_by("-date_prevue")
+        return filtrer_par_perimetre(qs, self.request.user, champ="controle__direction")
 
 
 @login_required

@@ -11,13 +11,14 @@
 
 <div class="rose-panel">
   <table class="table rose-table mb-0">
-    <thead><tr><th>Libellé</th><th>Date</th><th>Entité</th><th>Statut</th><th></th></tr></thead>
+    <thead><tr><th>Libellé</th><th>Date</th><th>Entité</th><th>Décisions</th><th>Statut</th><th></th></tr></thead>
     <tbody>
       {% for s in seances %}
       <tr>
         <td class="fw-semibold">{{ s.libelle }}</td>
         <td>{{ s.date_seance|date:"d/m/Y" }}</td>
         <td>{{ s.direction|default:"—" }}</td>
+        <td>{{ s.nb_decisions }} décision{{ s.nb_decisions|pluralize }}</td>
         <td>
           <span class="pill {% if s.statut == 'tenue' %}pill-faible{% elif s.statut == 'annulee' %}pill-critique{% else %}pill-neutral{% endif %}">
             {{ s.get_statut_display }}
@@ -26,7 +27,7 @@
         <td><a href="{% url 'comite:dossier' s.pk %}" class="small">Ouvrir le dossier</a></td>
       </tr>
       {% empty %}
-      <tr><td colspan="5" class="text-center text-muted py-4">Aucune séance enregistrée.</td></tr>
+      <tr><td colspan="6" class="text-center text-muted py-4">Aucune séance enregistrée.</td></tr>
       {% endfor %}
     </tbody>
   </table>

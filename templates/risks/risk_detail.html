@@ -73,7 +73,11 @@
         {% for k in indicateurs %}
         <tr>
           <td>{{ k.nom }}</td>
-          <td class="text-end"><span class="pill {% if k.en_alerte %}pill-critique{% else %}pill-faible{% endif %}">{{ k.valeur_actuelle|default:"—" }} / {{ k.seuil_alerte }}</span></td>
+          <td class="text-end">
+            <span class="pill {% if k.etat == 'limite_franchie' %}pill-critique{% elif k.etat == 'alerte' %}pill-eleve{% else %}pill-faible{% endif %}">
+              {{ k.valeur_actuelle|default:"—" }} (alerte {{ k.seuil_alerte }} / limite {{ k.seuil_limite }})
+            </span>
+          </td>
         </tr>
         {% endfor %}
       </table>

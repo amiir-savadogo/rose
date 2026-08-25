@@ -17,7 +17,9 @@ class RiskListView(LoginRequiredMixin, ListView):
     paginate_by = 20
 
     def get_queryset(self):
+        from apps.accounts.perimetre import filtrer_par_perimetre
         qs = Risk.objects.select_related("categorie", "direction").prefetch_related("evaluations").all()
+        qs = filtrer_par_perimetre(qs, self.request.user, champ="direction")
         statut = self.request.GET.get("statut")
         direction_id = self.request.GET.get("direction")
         categorie_id = self.request.GET.get("categorie")
@@ -47,6 +49,10 @@ class RiskDetailView(LoginRequiredMixin, DetailView):
     model = Risk
     template_name = "risks/risk_detail.html"
     context_object_name = "risque"
+
+    def get_queryset(self):
+        from apps.accounts.perimetre import filtrer_par_perimetre
+        return filtrer_par_perimetre(Risk.objects.all(), self.request.user, champ="direction")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -217,12 +223,12 @@ class KeyRiskIndicatorListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         from .models import KeyRiskIndicator
+        from apps.accounts.perimetre import filtrer_par_perimetre
         qs = KeyRiskIndicator.objects.select_related("risque").all()
+        qs = filtrer_par_perimetre(qs, self.request.user, champ="risque__direction")
         etat = self.request.GET.get("etat")
-        if etat == "alerte":
-            qs = [k for k in qs if k.en_alerte]
-        elif etat == "limites":
-            qs = [k for k in qs if not k.en_alerte]
+        if etat:
+            qs = [k for k in qs if k.etat == etat]
         return qs
 
 

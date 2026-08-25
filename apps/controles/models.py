@@ -33,9 +33,20 @@ class Controle(models.Model):
     class Meta:
         verbose_name = "Contrôle"
         verbose_name_plural = "Contrôles"
+        constraints = [
+            models.CheckConstraint(
+                check=~models.Q(executant=models.F("superviseur")),
+                name="controle_executant_different_superviseur",
+            )
+        ]
 
     def __str__(self):
         return self.nom
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.executant_id and self.superviseur_id and self.executant_id == self.superviseur_id:
+            raise ValidationError("L'exécutant et le superviseur doivent être deux personnes différentes.")
 
     @property
     def derniere_execution(self):
@@ -70,3 +81,9 @@ class ControleExecution(models.Model):
     def en_retard(self):
         from django.utils import timezone
         return self.resultat == self.Resultat.NON_REALISE and self.date_prevue < timezone.now().date()
+
+    @property
+    def preuve_manquante(self):
+        """Un contrôle réalisé (conforme ou non) sans preuve archivée est signalé —
+        « un contrôle sans preuve est un contrôle non fait »."""
+        return self.resultat in (self.Resultat.CONFORME, self.Resultat.NON_CONFORME) and not self.preuve

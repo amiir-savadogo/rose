@@ -1,5 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Indicateurs de risque{% endblock %}
+{% block aide_titre %}Deux seuils, non un{% endblock %}
+{% block aide %}
+<p>Chaque indicateur porte un seuil d'alerte et un seuil limite, et un sens : un taux de créances en souffrance est mauvais quand il monte, un taux de disponibilité quand il descend. Le franchissement déclenche une notification (préférences de chaque utilisateur, voir Mon profil).</p>
+{% endblock %}
 {% block content %}
 <div class="rose-page-header">
   <div>
@@ -13,29 +17,36 @@
     <label class="form-label small">État</label>
     <select name="etat" class="form-select" style="max-width:220px;" onchange="this.form.submit()">
       <option value="">Tous</option>
-      <option value="alerte" {% if request.GET.etat == "alerte" %}selected{% endif %}>En alerte</option>
-      <option value="limites" {% if request.GET.etat == "limites" %}selected{% endif %}>Dans les limites</option>
+      <option value="alerte" {% if request.GET.etat == "alerte" %}selected{% endif %}>Alerte</option>
+      <option value="limite_franchie" {% if request.GET.etat == "limite_franchie" %}selected{% endif %}>Limite franchie</option>
+      <option value="dans_les_limites" {% if request.GET.etat == "dans_les_limites" %}selected{% endif %}>Dans les limites</option>
     </select>
   </form>
 
   <table class="table rose-table mb-0">
-    <thead><tr><th>Code</th><th>Indicateur</th><th>Risque</th><th>Dernière valeur</th><th>Date</th><th>Seuil</th><th>État</th></tr></thead>
+    <thead><tr><th>Code</th><th>Indicateur</th><th>Risque</th><th>Dernière valeur</th><th>Date</th><th>Alerte</th><th>Limite</th><th>État</th></tr></thead>
     <tbody>
       {% for k in indicateurs %}
       <tr>
         <td class="text-muted">KRI-{{ k.pk|stringformat:"03d" }}</td>
-        <td class="fw-semibold">{{ k.nom }}</td>
+        <td>
+          <span class="fw-semibold">{{ k.nom }}</span><br>
+          <span class="text-muted small">{{ k.get_sens_display }}</span>
+        </td>
         <td><a href="{% url 'risks:detail' k.risque.pk %}">{{ k.risque.titre }}</a></td>
         <td>{{ k.valeur_actuelle|default:"—" }} {{ k.unite }}</td>
         <td class="text-muted">{{ k.maj_le|date:"d/m/Y" }}</td>
         <td>{{ k.seuil_alerte }}</td>
+        <td>{{ k.seuil_limite }}</td>
         <td>
-          {% if k.en_alerte %}<span class="pill pill-critique">Alerte</span>
-          {% else %}<span class="pill pill-faible">Dans les limites</span>{% endif %}
+          {% if k.etat == 'limite_franchie' %}<span class="pill pill-critique">Limite franchie</span>
+          {% elif k.etat == 'alerte' %}<span class="pill pill-eleve">Alerte</span>
+          {% elif k.etat == 'dans_les_limites' %}<span class="pill pill-faible">Dans les limites</span>
+          {% else %}<span class="pill pill-neutral">—</span>{% endif %}
         </td>
       </tr>
       {% empty %}
-      <tr><td colspan="7" class="text-center text-muted py-4">Aucun indicateur suivi.</td></tr>
+      <tr><td colspan="8" class="text-center text-muted py-4">Aucun indicateur suivi.</td></tr>
       {% endfor %}
     </tbody>
   </table>

@@ -6,8 +6,8 @@ from django.urls import reverse
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.accounts.permissions import peut_gerer_bibliotheque
-from .forms import DocumentForm, DocumentMetaForm, DocumentVersionForm
-from .models import Document, DocumentVersion
+from .forms import DocumentAttenduForm, DocumentForm, DocumentMetaForm, DocumentVersionForm
+from .models import Document, DocumentAttendu, DocumentVersion
 
 
 class DocumentListView(LoginRequiredMixin, ListView):
@@ -100,3 +100,34 @@ def nouvelle_version(request, pk):
         form = DocumentVersionForm(initial=initial)
 
     return render(request, "bibliotheque/version_form.html", {"form": form, "document": document})
+
+
+class CompletudeView(LoginRequiredMixin, ListView):
+    """Confronte le corpus documentaire attendu aux documents réellement présents."""
+    model = DocumentAttendu
+    template_name = "bibliotheque/completude.html"
+    context_object_name = "attendus"
+
+    def get_queryset(self):
+        return DocumentAttendu.objects.select_related("document").all()
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["nb_manquants"] = sum(1 for a in ctx["attendus"] if a.etat == "manquant")
+        ctx["nb_a_revoir"] = sum(1 for a in ctx["attendus"] if a.etat in ("en_retard", "proche"))
+        ctx["peut_gerer"] = peut_gerer_bibliotheque(self.request.user)
+        return ctx
+
+
+class DocumentAttenduCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+    model = DocumentAttendu
+    form_class = DocumentAttenduForm
+    template_name = "bibliotheque/document_attendu_form.html"
+    success_url = "/bibliotheque/completude/"
+
+    def test_func(self):
+        return peut_gerer_bibliotheque(self.request.user)
+
+    def form_valid(self, form):
+        messages.success(self.request, "Document attendu ajouté au corpus.")
+        return super().form_valid(form)

@@ -86,7 +86,7 @@ new Chart(document.getElementById('chartCategorie'), {
   type: 'bar',
   data: {
     labels: parCategorie.map(x => x.categorie),
-    datasets: [{ label: 'Score résiduel moyen', data: parCategorie.map(x => x.moyenne), backgroundColor: '#2f6a4f' }]
+    datasets: [{ label: 'Score résiduel moyen', data: parCategorie.map(x => x.moyenne), backgroundColor: '#0d7377' }]
   },
   options: { indexAxis: 'y', plugins: { legend: { display: false } } }
 });
@@ -97,7 +97,7 @@ new Chart(document.getElementById('chartEcarts'), {
     labels: topEcarts.map(x => x.risque),
     datasets: [
       { label: 'Inhérent', data: topEcarts.map(x => x.inherent), backgroundColor: '#c9d2d6' },
-      { label: 'Résiduel', data: topEcarts.map(x => x.residuel), backgroundColor: '#2f6a4f' },
+      { label: 'Résiduel', data: topEcarts.map(x => x.residuel), backgroundColor: '#0d7377' },
     ]
   },
   options: { scales: { x: { ticks: { autoSkip: false, maxRotation: 60, minRotation: 40 } } } }
