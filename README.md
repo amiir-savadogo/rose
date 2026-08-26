@@ -64,6 +64,14 @@ Aucune donnée n'est préchargée : le premier lancement est une base vide. Ordr
 
 Administrateur a toujours tous les droits (garde-fou volontaire, pour ne jamais se bloquer soi-même). Les quatre autres rôles (Risk Manager, Contrôleur, Agent, Direction) ont des droits éditables depuis **Paramètres > Rôles et permissions** : cochez/décochez par rôle qui peut gérer les risques, traiter les incidents, gérer les contrôles/obligations/bibliothèque, ou consulter le journal d'audit. Des valeurs de départ raisonnables sont préchargées à l'installation (migration de données).
 
+## Tests automatisés
+
+Les règles métier critiques (séparation exécutant/superviseur, preuve obligatoire, seuils KRI, gel des campagnes, statut automatique des plans d'action, filtrage par périmètre) sont couvertes par des tests Django, dans le dépôt (`apps/*/tests.py`), pas seulement vérifiées manuellement lors du développement :
+
+```bash
+docker compose exec web python manage.py test
+```
+
 ## Prochaines étapes suggérées
 
 1. `python manage.py makemigrations` puis `migrate` pour créer le schéma initial.

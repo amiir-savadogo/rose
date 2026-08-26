@@ -9,6 +9,7 @@ from django.views.generic import CreateView, DetailView, ListView
 from .forms import ChangerStatutForm, IncidentForm, PieceJointeForm
 from .models import Incident, IncidentCommentaire
 from apps.accounts.permissions import peut_traiter_incidents
+from apps.accounts.perimetre import objet_ou_404_perimetre
 
 
 class IncidentListView(LoginRequiredMixin, ListView):
@@ -64,7 +65,7 @@ class IncidentCreateView(LoginRequiredMixin, CreateView):
 
 @login_required
 def changer_statut(request, pk):
-    incident = get_object_or_404(Incident, pk=pk)
+    incident = objet_ou_404_perimetre(Incident, request.user, pk, champ="direction")
     if not peut_traiter_incidents(request.user):
         messages.error(request, "Vous n'avez pas les droits pour changer le statut de cet incident.")
         return redirect("incidents:detail", pk=pk)
@@ -89,7 +90,7 @@ def changer_statut(request, pk):
 
 @login_required
 def ajouter_piece_jointe(request, pk):
-    incident = get_object_or_404(Incident, pk=pk)
+    incident = objet_ou_404_perimetre(Incident, request.user, pk, champ="direction")
     if request.method == "POST":
         form = PieceJointeForm(request.POST, request.FILES)
         if form.is_valid():

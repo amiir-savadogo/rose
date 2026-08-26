@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.accounts.permissions import peut_administrer, peut_gerer_risques
+from apps.accounts.perimetre import objet_ou_404_perimetre
 from .forms import ActionPlanForm, CampagneForm, ImportRisquesCSVForm, KeyRiskIndicatorForm, RiskCategoryForm, RiskEvaluationForm, RiskForm
 from .models import Risk, RiskCategory
 
@@ -78,7 +79,7 @@ class RiskCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
 @login_required
 def ajouter_evaluation(request, pk):
-    risque = get_object_or_404(Risk, pk=pk)
+    risque = objet_ou_404_perimetre(Risk, request.user, pk, champ="direction")
     if not peut_gerer_risques(request.user):
         messages.error(request, "Vous n'avez pas les droits pour évaluer ce risque.")
         return redirect("risks:detail", pk=pk)
@@ -100,7 +101,7 @@ def ajouter_evaluation(request, pk):
 
 @login_required
 def ajouter_plan_action(request, pk):
-    risque = get_object_or_404(Risk, pk=pk)
+    risque = objet_ou_404_perimetre(Risk, request.user, pk, champ="direction")
     if not peut_gerer_risques(request.user):
         messages.error(request, "Vous n'avez pas les droits pour ajouter un plan d'action.")
         return redirect("risks:detail", pk=pk)
@@ -156,7 +157,7 @@ def vue_matricielle(request):
 
 @login_required
 def ajouter_kri(request, pk):
-    risque = get_object_or_404(Risk, pk=pk)
+    risque = objet_ou_404_perimetre(Risk, request.user, pk, champ="direction")
     if not peut_gerer_risques(request.user):
         messages.error(request, "Vous n'avez pas les droits pour ajouter un indicateur.")
         return redirect("risks:detail", pk=pk)
@@ -178,7 +179,7 @@ def ajouter_kri(request, pk):
 @login_required
 def maj_kri(request, pk):
     from .models import KeyRiskIndicator
-    kri = get_object_or_404(KeyRiskIndicator, pk=pk)
+    kri = objet_ou_404_perimetre(KeyRiskIndicator, request.user, pk, champ="risque__direction")
     if not peut_gerer_risques(request.user):
         messages.error(request, "Vous n'avez pas les droits pour mettre à jour cet indicateur.")
         return redirect("risks:detail", pk=kri.risque_id)
@@ -255,6 +256,10 @@ class RiskUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Risk
     form_class = RiskForm
     template_name = "risks/risk_form.html"
+
+    def get_queryset(self):
+        from apps.accounts.perimetre import filtrer_par_perimetre
+        return filtrer_par_perimetre(Risk.objects.all(), self.request.user, champ="direction")
 
     def test_func(self):
         return peut_gerer_risques(self.request.user)

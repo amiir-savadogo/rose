@@ -37,6 +37,10 @@ class SeanceCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
 
 def dossier_seance(request, pk):
+    """Le Comité des risques est volontairement transversal : il voit
+    l'ensemble des directions, sans filtrage par périmètre. C'est un choix de
+    conception délibéré, pas un oubli — un organe de gouvernance centrale doit
+    pouvoir arbitrer entre directions, ce qui suppose de toutes les voir."""
     seance = get_object_or_404(SeanceComite, pk=pk)
 
     risques_hors_appetence = []

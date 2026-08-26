@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.views.generic import CreateView, ListView
 
 from apps.accounts.permissions import peut_gerer_controles
+from apps.accounts.perimetre import objet_ou_404_perimetre
 from .forms import ControleForm, ProgrammerExecutionForm, RenseignerExecutionForm
 from .models import Controle, ControleExecution
 
@@ -48,7 +49,7 @@ class ExecutionListView(LoginRequiredMixin, ListView):
 
 @login_required
 def programmer_execution(request, pk):
-    controle = get_object_or_404(Controle, pk=pk)
+    controle = objet_ou_404_perimetre(Controle, request.user, pk, champ="direction")
     if not peut_gerer_controles(request.user):
         messages.error(request, "Vous n'avez pas les droits pour programmer un contrôle.")
         return redirect("controles:liste")
@@ -67,7 +68,7 @@ def programmer_execution(request, pk):
 
 @login_required
 def renseigner_execution(request, pk):
-    execution = get_object_or_404(ControleExecution, pk=pk)
+    execution = objet_ou_404_perimetre(ControleExecution, request.user, pk, champ="controle__direction")
     if request.method == "POST":
         form = RenseignerExecutionForm(request.POST, request.FILES, instance=execution)
         if form.is_valid():
@@ -88,6 +89,10 @@ class ControleUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     form_class = ControleForm
     template_name = "controles/controle_form.html"
     success_url = "/controles/"
+
+    def get_queryset(self):
+        from apps.accounts.perimetre import filtrer_par_perimetre
+        return filtrer_par_perimetre(Controle.objects.all(), self.request.user, champ="direction")
 
     def test_func(self):
         return peut_gerer_controles(self.request.user)

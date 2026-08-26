@@ -62,6 +62,24 @@ class KeyRiskIndicatorForm(forms.ModelForm):
             "valeur_actuelle": forms.NumberInput(attrs={"class": "form-control"}),
         }
 
+    def clean(self):
+        cleaned_data = super().clean()
+        sens = cleaned_data.get("sens")
+        alerte = cleaned_data.get("seuil_alerte")
+        limite = cleaned_data.get("seuil_limite")
+        if sens and alerte is not None and limite is not None:
+            if sens == KeyRiskIndicator.Sens.HAUSSE and limite < alerte:
+                raise forms.ValidationError(
+                    "Sens « croît avec la valeur » : le seuil limite doit être supérieur ou égal au seuil d'alerte "
+                    "(la limite est le franchissement le plus grave, elle vient après l'alerte)."
+                )
+            if sens == KeyRiskIndicator.Sens.BAISSE and limite > alerte:
+                raise forms.ValidationError(
+                    "Sens « décroît avec la valeur » : le seuil limite doit être inférieur ou égal au seuil d'alerte "
+                    "(la limite est le franchissement le plus grave, elle vient après l'alerte)."
+                )
+        return cleaned_data
+
 
 class RiskCategoryForm(forms.ModelForm):
     class Meta:

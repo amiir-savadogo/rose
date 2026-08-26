@@ -12,8 +12,13 @@ from apps.obligations.models import ObligationOccurrence
 from apps.risks.models import KeyRiskIndicator, Risk
 
 
-def _donnees_synthese():
-    risques_actifs = Risk.objects.filter(statut=Risk.Statut.ACTIF).select_related("categorie", "direction").prefetch_related("evaluations")
+def _donnees_synthese(user):
+    from apps.accounts.perimetre import filtrer_par_perimetre
+
+    risques_actifs = filtrer_par_perimetre(
+        Risk.objects.filter(statut=Risk.Statut.ACTIF).select_related("categorie", "direction").prefetch_related("evaluations"),
+        user, champ="direction",
+    )
 
     profil = {"critique": 0, "eleve": 0, "modere": 0, "faible": 0}
     risques_evalues = 0
@@ -28,12 +33,16 @@ def _donnees_synthese():
             hors_appetence.append((risque, derniere))
     hors_appetence.sort(key=lambda t: t[1].score_residuel, reverse=True)
 
-    incidents_par_statut = dict(Incident.objects.values_list("statut").annotate(total=Count("id")).order_by())
+    incidents_qs = filtrer_par_perimetre(Incident.objects.all(), user, champ="direction")
+    incidents_par_statut = dict(incidents_qs.values_list("statut").annotate(total=Count("id")).order_by())
     total_incidents_ouverts = sum(v for k, v in incidents_par_statut.items() if k != Incident.Statut.CLOTURE)
 
-    executions_en_retard = [e for e in ControleExecution.objects.select_related("controle", "controle__direction") if e.en_retard]
+    executions_qs = filtrer_par_perimetre(
+        ControleExecution.objects.select_related("controle", "controle__direction"), user, champ="controle__direction"
+    )
+    executions_en_retard = [e for e in executions_qs if e.en_retard]
     executions_sans_preuve = [
-        e for e in ControleExecution.objects.select_related("controle").exclude(resultat=ControleExecution.Resultat.NON_REALISE)
+        e for e in executions_qs.exclude(resultat=ControleExecution.Resultat.NON_REALISE)
         if e.preuve_manquante
     ]
 
@@ -68,7 +77,7 @@ def _donnees_synthese():
 
 @login_required
 def accueil(request):
-    return render(request, "dashboard/dashboard.html", _donnees_synthese())
+    return render(request, "dashboard/dashboard.html", _donnees_synthese(request.user))
 
 
 @login_required
@@ -79,11 +88,15 @@ def perimetre_produit(request):
 @login_required
 def analyse_interactive(request):
     from apps.risks.models import Risk, RiskCategory, classer_score
+    from apps.accounts.perimetre import filtrer_par_perimetre
 
     categorie_id = request.GET.get("categorie")
     direction_id = request.GET.get("direction")
 
-    risques = Risk.objects.filter(statut=Risk.Statut.ACTIF).select_related("categorie", "direction").prefetch_related("evaluations")
+    risques = filtrer_par_perimetre(
+        Risk.objects.filter(statut=Risk.Statut.ACTIF).select_related("categorie", "direction").prefetch_related("evaluations"),
+        request.user, champ="direction",
+    )
     if categorie_id:
         risques = risques.filter(categorie_id=categorie_id)
     if direction_id:
@@ -116,7 +129,9 @@ def analyse_interactive(request):
     top_ecarts = ecarts[:10]
 
     from apps.incidents.models import Incident
-    incidents_qs = Incident.objects.exclude(categorie_evenement="")
+    incidents_qs = filtrer_par_perimetre(
+        Incident.objects.exclude(categorie_evenement=""), request.user, champ="direction"
+    )
     labels_evt = dict(Incident.CategorieEvenement.choices)
     par_evenement = list(incidents_qs.values("categorie_evenement").annotate(total=Count("id")).order_by("-total"))
     for l in par_evenement:
@@ -140,7 +155,7 @@ def analyse_interactive(request):
 @permission_classes([IsAuthenticated])
 def synthese_api(request):
     """Version API (JSON) de la même synthèse, pour une future interface découplée."""
-    data = _donnees_synthese()
+    data = _donnees_synthese(request.user)
     data["profil"] = data["profil"]
     data["hors_appetence"] = [
         {"id": r.pk, "titre": r.titre, "residuel": e.score_residuel, "niveau": e.niveau_residuel}

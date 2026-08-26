@@ -23,3 +23,18 @@ def filtrer_par_perimetre(queryset, user, champ="direction"):
     if not a_perimetre_restreint(user):
         return queryset
     return queryset.filter(**{champ: user.direction})
+
+
+def objet_ou_404_perimetre(model_ou_queryset, user, pk, champ="direction"):
+    """Comme get_object_or_404, mais applique le filtrage par périmètre AVANT
+    de chercher l'objet — un utilisateur restreint qui devine l'ID d'un objet
+    hors de son périmètre reçoit un 404, jamais l'objet lui-même. À utiliser
+    pour toute action sur un objet précis (modifier, évaluer, programmer...),
+    pas seulement pour les listes."""
+    from django.shortcuts import get_object_or_404
+    if hasattr(model_ou_queryset, "objects"):
+        queryset = model_ou_queryset.objects.all()
+    else:
+        queryset = model_ou_queryset
+    queryset = filtrer_par_perimetre(queryset, user, champ=champ)
+    return get_object_or_404(queryset, pk=pk)
