@@ -10,11 +10,21 @@ uniquement le fichier .env.
 from pathlib import Path
 
 from decouple import Csv, config
+from django.core.exceptions import ImproperlyConfigured
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = config("DJANGO_SECRET_KEY", default="dev-secret-key-a-changer-en-production")
 DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
+
+_SECRET_KEY_DEV_PAR_DEFAUT = "dev-secret-key-a-changer-en-production"
+SECRET_KEY = config("DJANGO_SECRET_KEY", default=_SECRET_KEY_DEV_PAR_DEFAUT)
+if not DEBUG and SECRET_KEY == _SECRET_KEY_DEV_PAR_DEFAUT:
+    raise ImproperlyConfigured(
+        "DJANGO_SECRET_KEY doit être défini (variable d'environnement) en production — "
+        "voir .env.example. Le logiciel refuse de démarrer avec la clé de développement "
+        "par défaut hors de DEBUG=True, pour éviter qu'une installation client tourne "
+        "avec une clé connue publiquement."
+    )
 ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
 
 INSTALLED_APPS = [

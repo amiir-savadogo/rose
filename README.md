@@ -66,7 +66,7 @@ Administrateur a toujours tous les droits (garde-fou volontaire, pour ne jamais 
 
 ## Tests automatisés
 
-Les règles métier critiques (séparation exécutant/superviseur, preuve obligatoire, seuils KRI, gel des campagnes, statut automatique des plans d'action, filtrage par périmètre) sont couvertes par des tests Django, dans le dépôt (`apps/*/tests.py`), pas seulement vérifiées manuellement lors du développement :
+Les règles métier critiques (séparation exécutant/superviseur, preuve obligatoire, seuils KRI, gel des campagnes, statut automatique des plans d'action, filtrage par périmètre, journal d'audit inaltérable, versions documentaires, échéances réglementaires, décisions de comité) sont couvertes par 62 tests Django, dans le dépôt (`apps/*/tests.py`), pas seulement vérifiées manuellement lors du développement :
 
 ```bash
 docker compose exec web python manage.py test

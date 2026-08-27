@@ -30,7 +30,16 @@ def objet_ou_404_perimetre(model_ou_queryset, user, pk, champ="direction"):
     de chercher l'objet — un utilisateur restreint qui devine l'ID d'un objet
     hors de son périmètre reçoit un 404, jamais l'objet lui-même. À utiliser
     pour toute action sur un objet précis (modifier, évaluer, programmer...),
-    pas seulement pour les listes."""
+    pas seulement pour les listes.
+
+    N'a de sens que pour les objets rattachés à une direction (Risk, Incident,
+    Controle, KeyRiskIndicator via risque__direction). Les objets suivants sont
+    délibérément institutionnels, sans notion de direction, et ne passent donc
+    jamais par cette fonction : Document/DocumentVersion (bibliothèque),
+    Obligation/ObligationOccurrence (calendrier réglementaire), Campagne (revue
+    des risques), SeanceComite/DecisionComite (comité transversal, voir
+    apps/comite/views.py). Ce n'est pas un oubli — ces modèles n'ont tout
+    simplement pas de champ direction."""
     from django.shortcuts import get_object_or_404
     if hasattr(model_ou_queryset, "objects"):
         queryset = model_ou_queryset.objects.all()

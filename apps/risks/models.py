@@ -220,7 +220,7 @@ class KeyRiskIndicator(models.Model):
     unite = models.CharField(max_length=50, blank=True, help_text="ex: nombre, %, FCFA")
     sens = models.CharField(max_length=10, choices=Sens.choices, default=Sens.HAUSSE)
     seuil_alerte = models.DecimalField(max_digits=12, decimal_places=2)
-    seuil_limite = models.DecimalField(max_digits=12, decimal_places=2, default=0, help_text="Seuil de franchissement grave, au-delà du seuil d'alerte")
+    seuil_limite = models.DecimalField(max_digits=12, decimal_places=2, help_text="Seuil de franchissement grave, au-delà du seuil d'alerte")
     valeur_actuelle = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
     maj_le = models.DateTimeField(auto_now=True)
 
