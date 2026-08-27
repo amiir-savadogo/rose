@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Plans d'action{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Plans d'action</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="rose-page-header">
   <div>

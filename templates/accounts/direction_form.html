@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Nouvelle direction{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item">Paramètres</li>
+    <li class="rose-breadcrumb-item"><a href="{% url 'accounts:directions' %}">Directions / Entités</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">{% if object %}Modifier la direction{% else %}Nouvelle direction{% endif %}</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <h2 class="mb-4" style="font-size:1.3rem;">Nouvelle direction / entité</h2>
 <div class="rose-panel" style="max-width:600px;">

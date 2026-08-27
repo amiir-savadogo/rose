@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Modifier le plan d'action{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item"><a href="{% url 'risks:plans_action' %}">Plans d'action</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Modifier</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <h2 class="mb-4" style="font-size:1.3rem;">Modifier le plan d'action</h2>
 <div class="rose-panel" style="max-width:700px;">

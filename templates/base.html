@@ -146,6 +146,25 @@
         }
         .rose-aide-overlay.ouvert { opacity: 1; pointer-events: auto; }
 
+        /* Fil d'Ariane (Breadcrumb) */
+        .rose-breadcrumb-nav { margin-bottom: 14px; }
+        .rose-breadcrumb {
+            display: flex; flex-wrap: wrap; align-items: center;
+            padding: 0; margin: 0; list-style: none; font-size: 0.82rem; color: var(--rose-text-muted);
+        }
+        .rose-breadcrumb-item { display: inline-flex; align-items: center; color: var(--rose-text-muted); }
+        .rose-breadcrumb-item a {
+            color: var(--rose-text-muted); text-decoration: none; transition: color 0.15s ease;
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .rose-breadcrumb-item a:hover { color: var(--rose-primary); text-decoration: underline; }
+        html[data-theme="sombre"] .rose-breadcrumb-item a:hover { color: #7db8e8; }
+        .rose-breadcrumb-item + .rose-breadcrumb-item::before {
+            content: "›"; padding: 0 8px; color: var(--rose-text-muted); opacity: 0.6;
+            font-weight: 600; font-size: 0.95rem; line-height: 1;
+        }
+        .rose-breadcrumb-item.active { color: var(--rose-text); font-weight: 600; }
+
         /* Formulaires et éléments Bootstrap : s'adapter au mode sombre */
         html[data-theme="sombre"] .form-control,
         html[data-theme="sombre"] .form-select {
@@ -233,6 +252,8 @@
         <div class="alert alert-{{ message.tags|default:'info' }} py-2">{{ message }}</div>
       {% endfor %}
     {% endif %}
+
+    {% block breadcrumb %}{% endblock %}
 
     {% block content %}{% endblock %}
   </main>

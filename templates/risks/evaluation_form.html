@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Évaluer {{ risque.titre }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item"><a href="{% url 'risks:liste' %}">Cartographie des risques</a></li>
+    <li class="rose-breadcrumb-item"><a href="{% url 'risks:detail' risque.pk %}">R-{{ risque.pk|stringformat:"03d" }}</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Évaluer</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <h2 class="mb-4" style="font-size:1.3rem;">Nouvelle évaluation — {{ risque.titre }}</h2>
 <div class="rose-panel" style="max-width:700px;">

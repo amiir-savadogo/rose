@@ -1,5 +1,17 @@
 {% extends "base.html" %}
 {% block title %}Nouvelle catégorie{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item">Paramètres</li>
+    <li class="rose-breadcrumb-item"><a href="{% url 'risks:categories' %}">Catégories de risques</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Nouvelle catégorie</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <h2 class="mb-4" style="font-size:1.3rem;">Nouvelle catégorie de risque</h2>
 <div class="rose-panel" style="max-width:600px;">

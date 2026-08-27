@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Mon profil{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Mon profil</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="rose-page-header">
   <div><h2>Mon profil</h2><div class="subtitle">{{ user.username }} · {{ user.get_role_display }}</div></div>

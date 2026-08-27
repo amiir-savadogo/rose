@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Dossier — {{ seance.libelle }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav d-print-none">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item"><a href="{% url 'comite:seances' %}">Comité des risques</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Séance du {{ seance.date_seance|date:"d/m/Y" }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="rose-page-header d-print-none">
   <div>

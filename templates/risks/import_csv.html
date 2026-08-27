@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Importer des risques{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item">Paramètres</li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Importer des risques (Excel)</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="rose-page-header">
   <div><h2>Importer des risques (Excel)</h2><div class="subtitle">Pour charger d'un coup une liste existante</div></div>

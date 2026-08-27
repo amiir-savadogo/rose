@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Nouvelle séance{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item"><a href="{% url 'comite:seances' %}">Comité des risques</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Nouvelle séance</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <h2 class="mb-4" style="font-size:1.3rem;">Nouvelle séance — Comité des risques</h2>
 <div class="rose-panel" style="max-width:700px;">

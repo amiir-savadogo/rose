@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}Rôles et permissions{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item">Paramètres</li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Rôles et permissions</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="rose-page-header">
   <div><h2>Rôles et permissions</h2><div class="subtitle">Ce que chaque rôle a le droit de faire dans Rose</div></div>

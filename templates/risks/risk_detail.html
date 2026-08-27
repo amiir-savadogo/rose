@@ -1,5 +1,16 @@
 {% extends "base.html" %}
 {% block title %}{{ risque.titre }}{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item"><a href="{% url 'risks:liste' %}">Cartographie des risques</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">R-{{ risque.pk|stringformat:"03d" }} — {{ risque.titre|truncatechars:40 }}</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 {% with derniere=risque.derniere_evaluation %}
 <div class="rose-page-header">

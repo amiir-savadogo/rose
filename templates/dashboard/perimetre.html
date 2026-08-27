@@ -1,5 +1,15 @@
 {% extends "base.html" %}
 {% block title %}Périmètre{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Ce que Rose fait</li>
+  </ol>
+</nav>
+{% endblock %}
+
 {% block content %}
 <div class="rose-page-header">
   <div><h2>Ce que Rose fait — et ce qu'il ne fait pas</h2><div class="subtitle">Le dire d'emblée évite une déception à la première démonstration</div></div>
