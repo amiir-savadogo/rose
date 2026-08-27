@@ -5,177 +5,521 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}Rose{% endblock %} — Gestion des risques opérationnels</title>
     <script>
-        // Applique le thème avant le premier rendu, pour éviter un flash clair->sombre.
+        // Applique le thème et l'état du menu avant le premier rendu pour éviter tout scintillement
         (function () {
             var theme = localStorage.getItem('rose-theme') || 'clair';
             if (theme === 'sombre') document.documentElement.setAttribute('data-theme', 'sombre');
+            var sidebar = localStorage.getItem('rose-sidebar');
+            if (sidebar === 'collapsed') document.documentElement.classList.add('rose-sidebar-collapsed');
         })();
     </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         :root {
-            /* Charte graphique Rose — interface principale (light mode) */
-            --rose-navy: #0a2540;
-            --rose-navy-light: #123a5e;
-            --rose-bg: #f7f9fc;
+            /* Palette Moderne 2026 — Thème Clair */
+            --rose-bg: #f8fafc;
             --rose-panel-bg: #ffffff;
-            --rose-border: #e4e9ef;
-            --rose-text: #16232f;
-            --rose-text-muted: #6b7a80;
-
-            /* Boutons d'action : primaire = bleu, succès = vert. Rouge réservé au critique/destructif. */
-            --rose-primary: #2e5a88;
-            --rose-primary-dark: #24476c;
-            --rose-success: #0d7377;
-            --rose-success-dark: #0a5c5f;
-            --rose-danger: #9b2c2c;
-
-            /* Dégradé de risque faible -> élevé (vert -> orange -> rouge) */
-            --rose-faible-text: #0d7377;   --rose-faible-bg: #dcf0ef;
-            --rose-modere-text: #b9791e;   --rose-modere-bg: #faf0dc;
-            --rose-eleve-text: #b85c2e;    --rose-eleve-bg: #fae6da;
-            --rose-critique-text: #9b2c2c; --rose-critique-bg: #f7e2e2;
-            --rose-neutral-text: #5b6b73;  --rose-neutral-bg: #eef1f2;
+            --rose-sidebar-bg: #090e1a;
+            --rose-border: #e2e8f0;
+            --rose-border-subtle: #f1f5f9;
+            --rose-text: #0f172a;
+            --rose-text-muted: #64748b;
+            
+            /* Accents & Gradients */
+            --rose-primary: #2563eb;
+            --rose-primary-dark: #1d4ed8;
+            --rose-primary-gradient: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%);
+            --rose-success: #0d9488;
+            --rose-success-dark: #0f766e;
+            --rose-success-gradient: linear-gradient(135deg, #0d9488 0%, #06b6d4 100%);
+            --rose-danger: #ef4444;
+            --rose-danger-dark: #dc2626;
+            
+            /* Niveaux de risque — Badges modernes avec fond teinté */
+            --rose-faible-text: #0d9488;   --rose-faible-bg: #f0fdfa;   --rose-faible-border: #ccfbf1;
+            --rose-modere-text: #d97706;   --rose-modere-bg: #fffbeb;   --rose-modere-border: #fef3c7;
+            --rose-eleve-text: #ea580c;    --rose-eleve-bg: #fff7ed;    --rose-eleve-border: #ffedd5;
+            --rose-critique-text: #dc2626; --rose-critique-bg: #fef2f2; --rose-critique-border: #fee2e2;
+            --rose-neutral-text: #64748b;  --rose-neutral-bg: #f1f5f9;  --rose-neutral-border: #e2e8f0;
         }
+
         html[data-theme="sombre"] {
-            --rose-navy: #0b1120;
-            --rose-navy-light: #1b3a4b;
-            --rose-bg: #0b1120;
-            --rose-panel-bg: #101a2e;
-            --rose-border: #223454;
-            --rose-text: #e7edf3;
-            --rose-text-muted: #93a3b5;
+            /* Palette Moderne 2026 — Thème Sombre */
+            --rose-bg: #060913;
+            --rose-panel-bg: #0d1527;
+            --rose-sidebar-bg: #060913;
+            --rose-border: #1e293b;
+            --rose-border-subtle: #131d33;
+            --rose-text: #f8fafc;
+            --rose-text-muted: #94a3b8;
 
-            --rose-primary: #4d7bad;
-            --rose-primary-dark: #3d648c;
-            --rose-success: #14a0a5;
-            --rose-success-dark: #0d7377;
-            --rose-danger: #c65959;
+            --rose-primary: #3b82f6;
+            --rose-primary-dark: #2563eb;
+            --rose-primary-gradient: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%);
+            --rose-success: #14b8a6;
+            --rose-success-dark: #0d9488;
+            --rose-success-gradient: linear-gradient(135deg, #14b8a6 0%, #38bdf8 100%);
+            --rose-danger: #f87171;
+            --rose-danger-dark: #ef4444;
 
-            --rose-faible-text: #3fc9ce;   --rose-faible-bg: #103334;
-            --rose-modere-text: #e0ab52;   --rose-modere-bg: #352c14;
-            --rose-eleve-text: #e0895c;    --rose-eleve-bg: #3a2418;
-            --rose-critique-text: #e08080; --rose-critique-bg: #3a1c1c;
-            --rose-neutral-text: #93a3b5;  --rose-neutral-bg: #1b2a3f;
+            --rose-faible-text: #2dd4bf;   --rose-faible-bg: rgba(45, 212, 191, 0.12);   --rose-faible-border: rgba(45, 212, 191, 0.25);
+            --rose-modere-text: #fbbf24;   --rose-modere-bg: rgba(251, 191, 36, 0.12);   --rose-modere-border: rgba(251, 191, 36, 0.25);
+            --rose-eleve-text: #fb923c;    --rose-eleve-bg: rgba(251, 146, 60, 0.12);    --rose-eleve-border: rgba(251, 146, 60, 0.25);
+            --rose-critique-text: #f87171; --rose-critique-bg: rgba(248, 113, 113, 0.12); --rose-critique-border: rgba(248, 113, 113, 0.25);
+            --rose-neutral-text: #94a3b8;  --rose-neutral-bg: rgba(148, 163, 184, 0.1);  --rose-neutral-border: rgba(148, 163, 184, 0.2);
         }
+
         body {
             background-color: var(--rose-bg);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             color: var(--rose-text);
-            transition: background-color 0.15s ease, color 0.15s ease;
+            transition: background-color 0.2s ease, color 0.2s ease;
+            letter-spacing: -0.012em;
+            -webkit-font-smoothing: antialiased;
         }
-        .rose-shell { display: flex; min-height: 100vh; }
+
+        .rose-shell { display: flex; min-height: 100vh; position: relative; }
+        
+        /* Barre Latérale (Sidebar) */
         .rose-sidebar {
-            width: 236px; flex-shrink: 0; background: var(--rose-navy); color: #dce6e9;
-            padding: 20px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+            width: 250px; flex-shrink: 0; background: var(--rose-sidebar-bg); color: #cbd5e1;
+            padding: 22px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+            border-right: 1px solid rgba(255, 255, 255, 0.06);
+            transition: width 0.24s cubic-bezier(0.4, 0, 0.2, 1), padding 0.24s ease, opacity 0.2s ease;
+            white-space: nowrap; z-index: 100;
         }
-        .rose-logo { display: flex; align-items: center; gap: 10px; padding: 6px 8px 22px; }
+        html.rose-sidebar-collapsed .rose-sidebar {
+            width: 0;
+            padding-left: 0;
+            padding-right: 0;
+            opacity: 0;
+            overflow: hidden;
+            pointer-events: none;
+            border-right: none;
+        }
+        .rose-logo { display: flex; align-items: center; gap: 11px; padding: 4px 8px 24px; }
         .rose-logo-badge {
-            width: 34px; height: 34px; border-radius: 9px; background: var(--rose-success);
+            width: 36px; height: 36px; border-radius: 10px; background: var(--rose-success-gradient);
             display: flex; align-items: center; justify-content: center;
-            font-family: Georgia, 'Times New Roman', serif; font-weight: 700; color: #fff; font-size: 1.05rem;
+            font-weight: 800; color: #fff; font-size: 1.1rem;
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.35);
         }
-        .rose-logo-text { font-family: Georgia, 'Times New Roman', serif; font-weight: 700; font-size: 1.05rem; color: #fff; line-height: 1.1; }
-        .rose-logo-sub { font-size: 0.68rem; color: #9fb3ba; }
-        .rose-nav-section { font-size: 0.68rem; letter-spacing: 0.06em; color: #7c9299; padding: 10px 12px 6px; text-transform: uppercase; }
+        .rose-logo-text { font-weight: 800; font-size: 1.15rem; color: #fff; letter-spacing: -0.02em; line-height: 1.1; }
+        .rose-logo-sub { font-size: 0.68rem; color: #94a3b8; font-weight: 500; }
+        
+        .rose-nav-section {
+            font-size: 0.68rem; letter-spacing: 0.08em; color: #64748b;
+            padding: 14px 12px 6px; text-transform: uppercase; font-weight: 700;
+        }
         .rose-nav a {
-            display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: 8px;
-            color: #cfdde1; text-decoration: none; font-size: 0.88rem; margin-bottom: 2px;
+            display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-radius: 10px;
+            color: #94a3b8; text-decoration: none; font-size: 0.88rem; font-weight: 500;
+            margin-bottom: 3px; transition: all 0.18s ease;
         }
-        .rose-nav a:hover { background: rgba(255,255,255,0.08); color: #fff; }
-        .rose-nav a.active { background: var(--rose-success); color: #fff; font-weight: 600; }
-        .rose-nav a i { font-size: 0.95rem; width: 18px; text-align: center; }
-        .rose-main { flex: 1; padding: 20px 28px; }
-        .rose-topbar { display: flex; justify-content: flex-end; align-items: center; gap: 14px; margin-bottom: 16px; font-size: 0.85rem; color: var(--rose-text-muted); }
-        .rose-topbar .rose-user { font-weight: 600; color: var(--rose-text); }
-        .rose-theme-toggle {
+        .rose-nav a:hover {
+            background: rgba(255, 255, 255, 0.06);
+            color: #ffffff;
+            transform: translateX(3px);
+        }
+        .rose-nav a.active {
+            background: var(--rose-success-gradient);
+            color: #ffffff;
+            font-weight: 600;
+            box-shadow: 0 4px 14px rgba(13, 148, 136, 0.35);
+            transform: none;
+        }
+        .rose-nav a i { font-size: 1rem; width: 20px; text-align: center; opacity: 0.9; }
+
+        .rose-main-container {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            background-color: var(--rose-bg);
+        }
+
+        /* Top Header Bar Moderne — Fixée en haut, pleine largeur et fluide */
+        .rose-topbar-header {
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+            height: 56px;
+            padding: 0 32px;
+            background: var(--rose-panel-bg);
+            border-bottom: 1px solid var(--rose-border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        html[data-theme="sombre"] .rose-topbar-header {
+            background: #0d1527;
+            border-bottom-color: var(--rose-border);
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+        }
+        .rose-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 0;
+        }
+        .rose-header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+            font-size: 0.85rem;
+        }
+
+        .rose-content-body {
+            flex: 1;
+            padding: 24px 32px 48px;
+            min-width: 0;
+        }
+        .rose-sidebar-toggle-btn {
+            border: 1px solid var(--rose-border);
+            background: var(--rose-panel-bg);
+            color: var(--rose-text-muted);
+            border-radius: 9px;
+            width: 34px;
+            height: 34px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            padding: 0;
+            font-size: 1.05rem;
+            transition: all 0.18s ease;
+            flex-shrink: 0;
+        }
+        .rose-sidebar-toggle-btn:hover {
+            background: rgba(127,127,127,0.08);
+            color: var(--rose-primary);
+            border-color: var(--rose-primary);
+        }
+        .rose-header-divider {
+            width: 1px;
+            height: 20px;
+            background: var(--rose-border);
+            flex-shrink: 0;
+        }
+
+        /* Fil d'Ariane (Breadcrumb) */
+        .rose-breadcrumb-container {
+            display: flex;
+            align-items: center;
+            min-width: 0;
+            overflow: hidden;
+        }
+        .rose-breadcrumb-nav {
+            margin: 0 !important;
+            padding: 0 !important;
+            overflow-x: auto;
+            white-space: nowrap;
+            scrollbar-width: none;
+        }
+        .rose-breadcrumb-nav::-webkit-scrollbar { display: none; }
+        .rose-breadcrumb,
+        ol.rose-breadcrumb,
+        ul.rose-breadcrumb {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            list-style: none !important;
+            list-style-type: none !important;
+            font-size: 0.84rem;
+        }
+        .rose-breadcrumb-item,
+        li.rose-breadcrumb-item {
+            display: inline-flex !important;
+            align-items: center !important;
+            color: var(--rose-text-muted);
+            list-style: none !important;
+            list-style-type: none !important;
+            white-space: nowrap;
+        }
+        .rose-breadcrumb-item a {
+            color: var(--rose-text-muted);
+            text-decoration: none;
+            transition: color 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+        .rose-breadcrumb-item a:hover {
+            color: var(--rose-primary);
+        }
+        html[data-theme="sombre"] .rose-breadcrumb-item a:hover {
+            color: #60a5fa;
+        }
+        .rose-breadcrumb-item + .rose-breadcrumb-item::before {
+            content: "›" !important;
+            display: inline-block;
+            padding: 0 8px;
+            color: var(--rose-text-muted);
+            opacity: 0.5;
+            font-weight: 700;
+            font-size: 1rem;
+            line-height: 1;
+        }
+        .rose-breadcrumb-item.active,
+        li.rose-breadcrumb-item.active {
+            color: var(--rose-text) !important;
+            font-weight: 600;
+        }
+
+        /* Bouton Avatar & Menu Utilisateur */
+        .rose-avatar-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 10px 3px 3px;
+            background: var(--rose-panel-bg);
+            border: 1px solid var(--rose-border);
+            border-radius: 999px;
+            color: var(--rose-text);
+            cursor: pointer;
+            transition: all 0.18s ease;
+            font-size: 0.84rem;
+            font-weight: 600;
+        }
+        .rose-avatar-btn::after {
+            display: none !important;
+        }
+        .rose-avatar-btn:hover,
+        .show > .rose-avatar-btn {
+            background: rgba(127,127,127,0.06);
+            border-color: var(--rose-text-muted);
+        }
+        .rose-avatar-circle {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: var(--rose-primary-gradient);
+            color: #ffffff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.78rem;
+            font-weight: 700;
+            flex-shrink: 0;
+            box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+        }
+        .rose-avatar-name {
+            max-width: 120px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .rose-avatar-chevron {
+            font-size: 0.72rem;
+            color: var(--rose-text-muted);
+            transition: transform 0.2s ease;
+        }
+        .show .rose-avatar-chevron {
+            transform: rotate(180deg);
+        }
+
+        /* Menu Déroulant */
+        .rose-user-dropdown {
+            border-radius: 14px !important;
+            border: 1px solid var(--rose-border) !important;
+            background-color: var(--rose-panel-bg) !important;
+            min-width: 240px;
+            padding: 8px !important;
+            box-shadow: 0 14px 35px rgba(0,0,0,0.1) !important;
+            margin-top: 8px !important;
+        }
+        .rose-user-dropdown .dropdown-item {
+            color: var(--rose-text);
+            font-size: 0.85rem;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-weight: 500;
+            transition: all 0.15s ease;
+        }
+        .rose-user-dropdown .dropdown-item:hover,
+        .rose-user-dropdown .dropdown-item:focus {
+            background-color: rgba(127,127,127,0.08);
+            color: var(--rose-primary);
+        }
+        .rose-user-dropdown .dropdown-item.text-danger {
+            color: var(--rose-danger) !important;
+        }
+        .rose-user-dropdown .dropdown-item.text-danger:hover {
+            background-color: rgba(239, 68, 68, 0.08);
+        }
+        html[data-theme="sombre"] .rose-user-dropdown {
+            background-color: #0d1527 !important;
+            border-color: #1e293b !important;
+            box-shadow: 0 14px 35px rgba(0,0,0,0.45) !important;
+        }
+        html[data-theme="sombre"] .rose-user-dropdown .dropdown-item:hover {
+            background-color: #16223b;
+            color: #60a5fa;
+        }
+        html[data-theme="sombre"] .rose-user-dropdown .dropdown-item.text-danger:hover {
+            background-color: rgba(248, 113, 113, 0.12);
+        }
+
+        .rose-role-badge {
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 3px 9px;
+            border-radius: 6px;
+            background: var(--rose-neutral-bg);
+            color: var(--rose-neutral-text);
+            border: 1px solid var(--rose-neutral-border);
+            white-space: nowrap;
+        }
+        .rose-theme-toggle,
+        .rose-help-btn {
             border: 1px solid var(--rose-border); background: var(--rose-panel-bg); color: var(--rose-text-muted);
-            border-radius: 999px; width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
-            cursor: pointer; padding: 0;
+            border-radius: 9px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; padding: 0; font-size: 0.95rem; text-decoration: none; transition: all 0.18s ease;
         }
+        .rose-theme-toggle:hover,
+        .rose-help-btn:hover {
+            background: rgba(127,127,127,0.08);
+            color: var(--rose-text);
+            border-color: var(--rose-text-muted);
+        }
+
+        /* Cartes & Panneaux */
         .rose-panel {
-            background: var(--rose-panel-bg); border: 1px solid var(--rose-border); border-radius: 14px;
-            padding: 24px 26px; margin-bottom: 20px;
+            background: var(--rose-panel-bg);
+            border: 1px solid var(--rose-border);
+            border-radius: 16px;
+            padding: 24px 28px;
+            margin-bottom: 22px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02), 0 6px 18px rgba(0,0,0,0.02);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
-        .rose-page-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
-        .rose-page-header h2 { font-size: 1.35rem; font-weight: 700; margin-bottom: 2px; }
-        .rose-page-header .subtitle { color: var(--rose-text-muted); font-size: 0.85rem; }
+        html[data-theme="sombre"] .rose-panel {
+            box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+        }
+        
+        .rose-page-header {
+            display: flex; justify-content: space-between; align-items: flex-start;
+            margin-bottom: 20px; flex-wrap: wrap; gap: 12px;
+        }
+        .rose-page-header h2 { font-size: 1.45rem; font-weight: 800; letter-spacing: -0.025em; margin-bottom: 2px; }
+        .rose-page-header .subtitle { color: var(--rose-text-muted); font-size: 0.86rem; font-weight: 400; }
+        
         .rose-section-label {
-            font-size: 0.72rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rose-text-muted);
-            font-weight: 700; margin-bottom: 10px;
+            font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--rose-text-muted);
+            font-weight: 700; margin-bottom: 12px;
         }
-        .btn-rose-primary { background: var(--rose-primary); border-color: var(--rose-primary); color: #fff; font-size: 0.85rem; }
-        .btn-rose-primary:hover { background: var(--rose-primary-dark); border-color: var(--rose-primary-dark); color: #fff; }
-        .btn-rose-success { background: var(--rose-success); border-color: var(--rose-success); color: #fff; font-size: 0.85rem; }
-        .btn-rose-success:hover { background: var(--rose-success-dark); border-color: var(--rose-success-dark); color: #fff; }
-        .btn-rose-danger { background: var(--rose-danger); border-color: var(--rose-danger); color: #fff; font-size: 0.85rem; }
-        .btn-rose-outline { border-color: var(--rose-border); color: var(--rose-text); background: var(--rose-panel-bg); font-size: 0.85rem; }
 
+        /* Boutons Modernes */
+        .btn-rose-primary {
+            background: var(--rose-primary-gradient); border: none; color: #fff;
+            font-size: 0.86rem; font-weight: 600; padding: 7px 16px; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25); transition: all 0.18s ease;
+        }
+        .btn-rose-primary:hover {
+            transform: translateY(-1px); box-shadow: 0 6px 16px rgba(37, 99, 235, 0.35); color: #fff;
+        }
+        .btn-rose-success {
+            background: var(--rose-success-gradient); border: none; color: #fff;
+            font-size: 0.86rem; font-weight: 600; padding: 7px 16px; border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(13, 148, 136, 0.25); transition: all 0.18s ease;
+        }
+        .btn-rose-success:hover {
+            transform: translateY(-1px); box-shadow: 0 6px 16px rgba(13, 148, 136, 0.35); color: #fff;
+        }
+        .btn-rose-danger {
+            background: var(--rose-danger); border: none; color: #fff;
+            font-size: 0.86rem; font-weight: 600; padding: 7px 16px; border-radius: 10px;
+            transition: all 0.18s ease;
+        }
+        .btn-rose-outline {
+            border: 1px solid var(--rose-border); color: var(--rose-text); background: var(--rose-panel-bg);
+            font-size: 0.86rem; font-weight: 600; padding: 7px 16px; border-radius: 10px;
+            transition: all 0.18s ease;
+        }
+        .btn-rose-outline:hover {
+            background: rgba(127,127,127,0.06); color: var(--rose-primary); border-color: var(--rose-primary);
+        }
+
+        /* Badges / Pilules Modernes avec status dots */
         .pill {
-            display: inline-flex; align-items: center; gap: 5px; padding: 3px 11px; border-radius: 999px;
-            font-size: 0.74rem; font-weight: 600; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 999px;
+            font-size: 0.74rem; font-weight: 600; white-space: nowrap; border: 1px solid transparent;
         }
-        .pill::before { content: "•"; }
-        .pill-critique { color: var(--rose-critique-text); background: var(--rose-critique-bg); }
-        .pill-eleve { color: var(--rose-eleve-text); background: var(--rose-eleve-bg); }
-        .pill-modere { color: var(--rose-modere-text); background: var(--rose-modere-bg); }
-        .pill-faible { color: var(--rose-faible-text); background: var(--rose-faible-bg); }
-        .pill-neutral { color: var(--rose-neutral-text); background: var(--rose-neutral-bg); }
+        .pill::before {
+            content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0;
+        }
+        .pill-critique { color: var(--rose-critique-text); background: var(--rose-critique-bg); border-color: var(--rose-critique-border); }
+        .pill-eleve    { color: var(--rose-eleve-text);    background: var(--rose-eleve-bg);    border-color: var(--rose-eleve-border); }
+        .pill-modere   { color: var(--rose-modere-text);   background: var(--rose-modere-bg);   border-color: var(--rose-modere-border); }
+        .pill-faible   { color: var(--rose-faible-text);   background: var(--rose-faible-bg);   border-color: var(--rose-faible-border); }
+        .pill-neutral  { color: var(--rose-neutral-text);  background: var(--rose-neutral-bg);  border-color: var(--rose-neutral-border); }
 
-        .rose-kpi { border: 1px solid var(--rose-border); border-radius: 12px; padding: 16px 18px; background: var(--rose-panel-bg); }
-        .rose-kpi .value { font-size: 1.6rem; font-weight: 700; color: var(--rose-text); }
-        .rose-kpi .label { font-size: 0.72rem; color: var(--rose-text-muted); letter-spacing: 0.03em; text-transform: uppercase; }
+        /* KPI Cards */
+        .rose-kpi {
+            border: 1px solid var(--rose-border); border-radius: 14px; padding: 18px 20px; background: var(--rose-panel-bg);
+            box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: all 0.18s ease;
+        }
+        .rose-kpi:hover { transform: translateY(-2px); box-shadow: 0 8px 20px -4px rgba(0,0,0,0.06); }
+        .rose-kpi .value { font-size: 1.75rem; font-weight: 800; letter-spacing: -0.03em; color: var(--rose-text); line-height: 1.2; }
+        .rose-kpi .label { font-size: 0.72rem; color: var(--rose-text-muted); letter-spacing: 0.05em; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; }
 
-        .rose-table thead th { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--rose-text-muted); border-bottom: 1px solid var(--rose-border); font-weight: 700; }
-        .rose-table td { border-bottom: 1px solid var(--rose-border); vertical-align: middle; font-size: 0.88rem; color: var(--rose-text); }
-        .rose-table tr:hover td { background: rgba(127,127,127,0.06); }
+        /* Tableaux Modernes */
+        .rose-table thead th {
+            font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--rose-text-muted);
+            border-bottom: 1px solid var(--rose-border); font-weight: 700; padding: 12px 14px; background: transparent;
+        }
+        .rose-table td {
+            border-bottom: 1px solid var(--rose-border); vertical-align: middle; font-size: 0.88rem;
+            color: var(--rose-text); padding: 13px 14px;
+        }
+        .rose-table tr:hover td { background: rgba(127,127,127,0.04); }
 
-        .card-kpi { border: 1px solid var(--rose-border); border-radius: 12px; box-shadow: none; background: var(--rose-panel-bg); }
-        .heatmap-cell { width: 48px; height: 48px; text-align: center; vertical-align: middle; color: #fff; font-weight: 600; border-radius: 6px; }
+        .card-kpi { border: 1px solid var(--rose-border); border-radius: 14px; box-shadow: none; background: var(--rose-panel-bg); }
+        .heatmap-cell { width: 48px; height: 48px; text-align: center; vertical-align: middle; color: #fff; font-weight: 700; border-radius: 8px; }
 
         .rose-aide-panel {
-            position: fixed; top: 0; right: -380px; width: 360px; height: 100vh; background: var(--rose-panel-bg); color: var(--rose-text);
-            box-shadow: -4px 0 20px rgba(0,0,0,0.15); z-index: 1050; transition: right 0.25s ease;
+            position: fixed; top: 0; right: -400px; width: 380px; height: 100vh; background: var(--rose-panel-bg); color: var(--rose-text);
+            box-shadow: -8px 0 30px rgba(0,0,0,0.15); z-index: 1050; transition: right 0.28s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex; flex-direction: column;
         }
         .rose-aide-panel.ouvert { right: 0; }
         .rose-aide-overlay {
-            position: fixed; inset: 0; background: rgba(0,0,0,0.25); z-index: 1040;
-            opacity: 0; pointer-events: none; transition: opacity 0.2s ease;
+            position: fixed; inset: 0; background: rgba(0,0,0,0.35); backdrop-filter: blur(2px); z-index: 1040;
+            opacity: 0; pointer-events: none; transition: opacity 0.25s ease;
         }
         .rose-aide-overlay.ouvert { opacity: 1; pointer-events: auto; }
 
-        /* Fil d'Ariane (Breadcrumb) */
-        .rose-breadcrumb-nav { margin-bottom: 14px; }
-        .rose-breadcrumb {
-            display: flex; flex-wrap: wrap; align-items: center;
-            padding: 0; margin: 0; list-style: none; font-size: 0.82rem; color: var(--rose-text-muted);
+        /* Formulaires Bootstrap Adaptés */
+        .form-control, .form-select {
+            border-radius: 10px; border: 1px solid var(--rose-border); font-size: 0.88rem; padding: 8px 12px;
         }
-        .rose-breadcrumb-item { display: inline-flex; align-items: center; color: var(--rose-text-muted); }
-        .rose-breadcrumb-item a {
-            color: var(--rose-text-muted); text-decoration: none; transition: color 0.15s ease;
-            display: inline-flex; align-items: center; gap: 4px;
+        .form-control:focus, .form-select:focus {
+            border-color: var(--rose-primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
         }
-        .rose-breadcrumb-item a:hover { color: var(--rose-primary); text-decoration: underline; }
-        html[data-theme="sombre"] .rose-breadcrumb-item a:hover { color: #7db8e8; }
-        .rose-breadcrumb-item + .rose-breadcrumb-item::before {
-            content: "›"; padding: 0 8px; color: var(--rose-text-muted); opacity: 0.6;
-            font-weight: 600; font-size: 0.95rem; line-height: 1;
-        }
-        .rose-breadcrumb-item.active { color: var(--rose-text); font-weight: 600; }
-
-        /* Formulaires et éléments Bootstrap : s'adapter au mode sombre */
         html[data-theme="sombre"] .form-control,
         html[data-theme="sombre"] .form-select {
-            background-color: #16233a; color: var(--rose-text); border-color: var(--rose-border);
+            background-color: #131d33; color: var(--rose-text); border-color: var(--rose-border);
         }
         html[data-theme="sombre"] .form-control:focus,
-        html[data-theme="sombre"] .form-select:focus { background-color: #16233a; color: var(--rose-text); }
+        html[data-theme="sombre"] .form-select:focus { background-color: #131d33; color: var(--rose-text); }
         html[data-theme="sombre"] .table { color: var(--rose-text); }
         html[data-theme="sombre"] .text-muted { color: var(--rose-text-muted) !important; }
-        html[data-theme="sombre"] a { color: #7db8e8; }
-        html[data-theme="sombre"] a:hover { color: #a3d0f5; }
+        html[data-theme="sombre"] a { color: #60a5fa; }
+        html[data-theme="sombre"] a:hover { color: #93c5fd; }
     </style>
 </head>
 <body>
@@ -220,43 +564,105 @@
     </nav>
   </aside>
 
-  <main class="rose-main">
-    <div class="rose-topbar">
-      <button type="button" class="rose-theme-toggle" onclick="roseToggleTheme()" title="Changer de thème">
-        <i class="bi bi-moon-stars" id="rose-theme-icon"></i>
-      </button>
-      <a href="#" class="text-decoration-none text-muted" title="Aide" onclick="document.getElementById('aideRose').classList.add('ouvert'); document.getElementById('aideOverlay').classList.add('ouvert'); return false;"><i class="bi bi-question-circle"></i></a>
-      <a href="{% url 'accounts:mon_profil' %}" class="rose-user text-decoration-none"><i class="bi bi-person-circle"></i> {{ user.get_full_name|default:user.username }}</a>
-      <span>{{ user.get_role_display }}</span>
-      <form method="post" action="{% url 'logout' %}" class="mb-0">
-        {% csrf_token %}
-        <button class="btn btn-link btn-sm text-muted text-decoration-none p-0" type="submit">Quitter</button>
-      </form>
-    </div>
-
-    <div id="aideOverlay" class="rose-aide-overlay" onclick="document.getElementById('aideRose').classList.remove('ouvert'); this.classList.remove('ouvert');"></div>
-    <div class="rose-aide-panel" id="aideRose">
-      <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
-        <h6 class="fw-bold mb-0">{% block aide_titre %}Aide{% endblock %}</h6>
-        <button type="button" class="btn-close" onclick="document.getElementById('aideRose').classList.remove('ouvert'); document.getElementById('aideOverlay').classList.remove('ouvert');"></button>
+  <div class="rose-main-container">
+    <header class="rose-topbar-header">
+      <div class="rose-header-left">
+        <button type="button" class="rose-sidebar-toggle-btn" onclick="roseToggleSidebar()" title="Afficher / Masquer le menu latéral">
+          <i class="bi bi-layout-sidebar-inset"></i>
+        </button>
+        <span class="rose-header-divider"></span>
+        <div class="rose-breadcrumb-container flex-grow-1">
+          {% block breadcrumb %}
+          <nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+            <ol class="rose-breadcrumb">
+              <li class="rose-breadcrumb-item active" aria-current="page"><i class="bi bi-house-door"></i> Tableau de bord</li>
+            </ol>
+          </nav>
+          {% endblock %}
+        </div>
       </div>
-      <div class="p-3" style="font-size:0.85rem; overflow-y:auto;">
-        {% block aide %}
-        <p class="text-muted">Aucune aide contextuelle spécifique pour cette page pour le moment.</p>
-        {% endblock %}
+
+      <div class="rose-header-right">
+        <button type="button" class="rose-theme-toggle" onclick="roseToggleTheme()" title="Changer de thème">
+          <i class="bi bi-moon-stars" id="rose-theme-icon"></i>
+        </button>
+        <a href="#" class="rose-help-btn" title="Aide contextuelle" onclick="document.getElementById('aideRose').classList.add('ouvert'); document.getElementById('aideOverlay').classList.add('ouvert'); return false;">
+          <i class="bi bi-question-circle"></i>
+        </a>
+        <span class="rose-header-divider"></span>
+
+        <!-- Menu Déroulant Utilisateur -->
+        <div class="dropdown">
+          <button class="rose-avatar-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Menu utilisateur">
+            <span class="rose-avatar-circle">{{ user.first_name|default:user.username|slice:":1"|upper }}</span>
+            <span class="rose-avatar-name">{{ user.first_name|default:user.username }}</span>
+            <i class="bi bi-chevron-down rose-avatar-chevron"></i>
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end rose-user-dropdown">
+            <li class="px-3 py-2 border-bottom mb-1" style="border-color: var(--rose-border) !important;">
+              <div class="fw-semibold text-truncate" style="color: var(--rose-text); max-width: 200px;">{{ user.get_full_name|default:user.username }}</div>
+              <div class="small text-truncate mb-1" style="color: var(--rose-text-muted); font-size: 0.76rem;">{{ user.email|default:user.username }}</div>
+              <span class="rose-role-badge d-inline-block">{{ user.get_role_display }}</span>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'accounts:mon_profil' %}">
+                <i class="bi bi-person"></i> Mon profil
+              </a>
+            </li>
+            {% if peut_administrer %}
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'accounts:roles' %}">
+                <i class="bi bi-shield-check"></i> Rôles & permissions
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'accounts:utilisateurs' %}">
+                <i class="bi bi-people"></i> Gestion des utilisateurs
+              </a>
+            </li>
+            <li>
+              <a class="dropdown-item d-flex align-items-center gap-2" href="{% url 'accounts:sessions' %}">
+                <i class="bi bi-broadcast"></i> Sessions actives
+              </a>
+            </li>
+            {% endif %}
+            <li><hr class="dropdown-divider my-1" style="border-color: var(--rose-border);"></li>
+            <li>
+              <form method="post" action="{% url 'logout' %}" class="mb-0">
+                {% csrf_token %}
+                <button class="dropdown-item text-danger d-flex align-items-center gap-2" type="submit">
+                  <i class="bi bi-box-arrow-right"></i> Déconnexion
+                </button>
+              </form>
+            </li>
+          </ul>
+        </div>
       </div>
-    </div>
+    </header>
 
-    {% if messages %}
-      {% for message in messages %}
-        <div class="alert alert-{{ message.tags|default:'info' }} py-2">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
+    <main class="rose-content-body">
+      <div id="aideOverlay" class="rose-aide-overlay" onclick="document.getElementById('aideRose').classList.remove('ouvert'); this.classList.remove('ouvert');"></div>
+      <div class="rose-aide-panel" id="aideRose">
+        <div class="d-flex justify-content-between align-items-center p-3 border-bottom">
+          <h6 class="fw-bold mb-0">{% block aide_titre %}Aide{% endblock %}</h6>
+          <button type="button" class="btn-close" onclick="document.getElementById('aideRose').classList.remove('ouvert'); document.getElementById('aideOverlay').classList.remove('ouvert');"></button>
+        </div>
+        <div class="p-3" style="font-size:0.85rem; overflow-y:auto;">
+          {% block aide %}
+          <p class="text-muted">Aucune aide contextuelle spécifique pour cette page pour le moment.</p>
+          {% endblock %}
+        </div>
+      </div>
 
-    {% block breadcrumb %}{% endblock %}
+      {% if messages %}
+        {% for message in messages %}
+          <div class="alert alert-{{ message.tags|default:'info' }} py-2">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
 
-    {% block content %}{% endblock %}
-  </main>
+      {% block content %}{% endblock %}
+    </main>
+  </div>
 </div>
 {% else %}
 <div class="container-fluid py-4">
@@ -287,6 +693,10 @@
         }
         localStorage.setItem('rose-theme', suivant);
         roseAppliquerIcone();
+    }
+    function roseToggleSidebar() {
+        var isCollapsed = document.documentElement.classList.toggle('rose-sidebar-collapsed');
+        localStorage.setItem('rose-sidebar', isCollapsed ? 'collapsed' : 'expanded');
     }
     roseAppliquerIcone();
 </script>
