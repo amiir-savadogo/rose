@@ -1,0 +1,38 @@
+databases:
+  - name: rose-db
+    plan: free
+    databaseName: rose
+    user: rose
+
+services:
+  - type: web
+    name: rose
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /accounts/login/
+    envVars:
+      - key: PORT
+        value: "8000"
+      - key: DJANGO_DEBUG
+        value: "False"
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: DJANGO_ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: POSTGRES_DB
+        fromDatabase: { name: rose-db, property: database }
+      - key: POSTGRES_USER
+        fromDatabase: { name: rose-db, property: user }
+      - key: POSTGRES_PASSWORD
+        fromDatabase: { name: rose-db, property: password }
+      - key: POSTGRES_HOST
+        fromDatabase: { name: rose-db, property: host }
+      - key: POSTGRES_PORT
+        fromDatabase: { name: rose-db, property: port }
+      - key: DJANGO_SUPERUSER_USERNAME
+        value: admin
+      - key: DJANGO_SUPERUSER_EMAIL
+        value: rachelganeshbhasin@gmail.com
+      - key: DJANGO_SUPERUSER_PASSWORD
+        sync: false

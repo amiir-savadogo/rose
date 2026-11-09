@@ -139,3 +139,6 @@ if not DEBUG:
     X_FRAME_OPTIONS = "DENY"
     CSRF_COOKIE_SECURE = config("DJANGO_SECURE_COOKIES", default=True, cast=bool)
     SESSION_COOKIE_SECURE = config("DJANGO_SECURE_COOKIES", default=True, cast=bool)
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+CSRF_TRUSTED_ORIGINS = ["https://*.onrender.com"]
