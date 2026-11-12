@@ -47,6 +47,22 @@
   </div>
   <div class="col-md-6">
     <div class="rose-panel">
+      <div class="rose-section-label">Par type d'événement (sous-catégorie)</div>
+      <table class="table rose-table mb-0">
+        {% for ligne in par_sous_categorie %}
+        <tr>
+          <td>{{ ligne.sous_categorie__libelle }}<div class="text-muted small">{{ ligne.sous_categorie__categorie__libelle }}</div></td>
+          <td class="text-end">{{ ligne.total }}</td>
+        </tr>
+        {% empty %}
+        <tr><td class="text-muted">Aucune sous-catégorie renseignée.</td></tr>
+        {% endfor %}
+      </table>
+      {% if sans_sous_categorie %}<p class="text-muted small mt-2 mb-0">{{ sans_sous_categorie }} incident{{ sans_sous_categorie|pluralize }} sans sous-catégorie.</p>{% endif %}
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="rose-panel">
       <div class="rose-section-label">Par processus</div>
       <table class="table rose-table mb-0">
         {% for ligne in par_processus %}

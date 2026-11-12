@@ -55,7 +55,7 @@ def journaliser_suppression(sender, instance, **kwargs):
 
 
 def connecter_modeles_audites():
-    from apps.risks.models import Risk, RiskEvaluation, ActionPlan
+    from apps.risks.models import Risk, RiskEvaluation, ActionPlan, CategorieEvenement, SousCategorieEvenement
     from apps.incidents.models import Incident
     from apps.obligations.models import Obligation, ObligationOccurrence
     from apps.controles.models import Controle, ControleExecution
@@ -64,6 +64,7 @@ def connecter_modeles_audites():
     modeles_audites = [
         Risk, RiskEvaluation, ActionPlan, Incident, Obligation, ObligationOccurrence,
         Controle, ControleExecution, Document, DocumentVersion,
+        CategorieEvenement, SousCategorieEvenement,
     ]
     for modele in modeles_audites:
         pre_save.connect(capturer_avant, sender=modele, weak=False)

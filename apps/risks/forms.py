@@ -1,21 +1,44 @@
 from django import forms
 
 from .models import ActionPlan, Campagne, KeyRiskIndicator, Risk, RiskCategory, RiskEvaluation
+from .typologie import choix_groupes
 
 
 class RiskForm(forms.ModelForm):
     class Meta:
         model = Risk
-        fields = ["titre", "description", "categorie", "direction", "processus", "statut", "proprietaire"]
+        fields = ["titre", "description", "sous_categorie_evenement", "categorie", "direction", "processus", "statut", "proprietaire"]
         widgets = {
             "titre": forms.TextInput(attrs={"class": "form-control"}),
             "description": forms.Textarea(attrs={"class": "form-control", "rows": 3}),
+            "sous_categorie_evenement": forms.Select(attrs={"class": "form-select"}),
             "categorie": forms.Select(attrs={"class": "form-select"}),
             "direction": forms.Select(attrs={"class": "form-select"}),
             "processus": forms.TextInput(attrs={"class": "form-control"}),
             "statut": forms.Select(attrs={"class": "form-select"}),
             "proprietaire": forms.Select(attrs={"class": "form-select"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        champ = self.fields["sous_categorie_evenement"]
+        champ.choices = choix_groupes()
+        # La catégorie de risque se déduit du type d'événement quand il est renseigné.
+        self.fields["categorie"].required = False
+        self.fields["categorie"].help_text = "Laissée vide, elle est déduite du type d'événement choisi ci-dessus."
+
+    def clean(self):
+        cleaned = super().clean()
+        sous = cleaned.get("sous_categorie_evenement")
+        if sous and not cleaned.get("categorie"):
+            categorie, _ = RiskCategory.objects.get_or_create(
+                nom=sous.categorie.libelle,
+                defaults={"description": "Catégorie d'événement de risque opérationnel (Circulaire 003-2017/CB/C, annexe)."},
+            )
+            cleaned["categorie"] = categorie
+        elif not cleaned.get("categorie") and not self.errors.get("categorie"):
+            self.add_error("categorie", "Choisissez un type d'événement ou une catégorie de risque.")
+        return cleaned
 
 
 class RiskEvaluationForm(forms.ModelForm):

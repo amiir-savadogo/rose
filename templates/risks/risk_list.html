@@ -43,7 +43,7 @@
 
 <div class="rose-panel">
   <form method="get" class="row g-3 align-items-end mb-3">
-    <div class="col-md-3">
+    <div class="col-md-2">
       <label class="form-label small">Entité</label>
       <select name="direction" class="form-select">
         <option value="">Toutes</option>
@@ -52,12 +52,21 @@
         {% endfor %}
       </select>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-2">
       <label class="form-label small">Catégorie</label>
       <select name="categorie" class="form-select">
         <option value="">Toutes</option>
         {% for c in toutes_categories %}
         <option value="{{ c.pk }}" {% if request.GET.categorie == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nom }}</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-md-2">
+      <label class="form-label small">Type d'événement (Bâle)</label>
+      <select name="evenement" class="form-select">
+        <option value="">Tous</option>
+        {% for c in categories_evenement %}
+        <option value="{{ c.pk }}" {% if request.GET.evenement == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.libelle|truncatechars:48 }}</option>
         {% endfor %}
       </select>
     </div>

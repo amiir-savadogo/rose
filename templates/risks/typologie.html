@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}Typologie des événements{% endblock %}
+
+{% block breadcrumb %}
+<nav aria-label="breadcrumb" class="rose-breadcrumb-nav">
+  <ol class="rose-breadcrumb">
+    <li class="rose-breadcrumb-item"><a href="{% url 'dashboard:accueil' %}"><i class="bi bi-house-door"></i> Accueil</a></li>
+    <li class="rose-breadcrumb-item active" aria-current="page">Typologie des événements</li>
+  </ol>
+</nav>
+{% endblock %}
+
+{% block content %}
+<div class="rose-page-header">
+  <div>
+    <h2>Typologie des événements de pertes opérationnelles</h2>
+    <div class="subtitle">Annexe de la Circulaire n°003-2017/CB/C — 7 catégories, {{ nb_total }} sous-catégories. Chaque risque et chaque incident se rattache à l'une d'elles.</div>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-md-4">
+    <div class="rose-kpi"><div class="label">Sous-catégories couvertes</div><div class="value">{{ nb_couvertes }} / {{ nb_total }}</div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="rose-kpi"><div class="label">Sans risque cartographié</div><div class="value">{{ nb_non_couvertes }}</div></div>
+  </div>
+  <div class="col-md-4">
+    <div class="rose-kpi"><div class="label">Risques sans type d'événement</div><div class="value">{{ risques_non_classes }}</div></div>
+  </div>
+</div>
+<p class="text-muted small">Une sous-catégorie « sans risque » n'est pas forcément un oubli (certaines peuvent ne pas concerner votre établissement), mais elle mérite une décision explicite lors de la revue de cartographie.
+  Un exemple sans risque correspondant peut être transformé en risque d'un clic.</p>
+
+{% for bloc in categories %}
+<div class="rose-panel">
+  <div class="d-flex justify-content-between align-items-start">
+    <div class="rose-section-label mb-2">{{ forloop.counter }}. {{ bloc.categorie.libelle }}</div>
+    <div class="text-nowrap small">
+      <span class="pill pill-neutral">{{ bloc.nb_risques }} risque{{ bloc.nb_risques|pluralize }}</span>
+      <span class="pill pill-neutral">{{ bloc.nb_incidents }} incident{{ bloc.nb_incidents|pluralize }}</span>
+    </div>
+  </div>
+  <table class="table rose-table mb-0">
+    <thead><tr><th style="width:28%;">Sous-catégorie</th><th>Exemples</th><th class="text-end" style="width:90px;">Risques</th><th class="text-end" style="width:90px;">Incidents</th></tr></thead>
+    <tbody>
+      {% for ligne in bloc.sous_categories %}
+      <tr>
+        <td class="fw-semibold">{{ ligne.sous.libelle }}</td>
+        <td class="small">
+          {% for ex in ligne.exemples %}
+            {% if peut_gerer %}<a href="{% url 'risks:creer' %}?sous_categorie={{ ligne.sous.pk }}&amp;titre={{ ex|urlencode }}" class="text-decoration-none text-reset" title="Créer un risque à partir de cet exemple">{{ ex }}</a>{% else %}{{ ex }}{% endif %}{% if not forloop.last %} · {% endif %}
+          {% endfor %}
+        </td>
+        <td class="text-end">
+          {% if ligne.nb_risques %}<a href="{% url 'risks:liste' %}?sous_categorie={{ ligne.sous.pk }}">{{ ligne.nb_risques }}</a>{% else %}<span class="pill pill-modere">aucun</span>{% endif %}
+        </td>
+        <td class="text-end">{{ ligne.nb_incidents }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endfor %}
+{% endblock %}

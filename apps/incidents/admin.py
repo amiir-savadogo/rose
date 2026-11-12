@@ -15,8 +15,8 @@ class IncidentPieceJointeInline(admin.TabularInline):
 
 @admin.register(Incident)
 class IncidentAdmin(admin.ModelAdmin):
-    list_display = ("titre", "gravite", "statut", "date_survenue", "declare_par", "assigne_a")
-    list_filter = ("statut", "gravite")
+    list_display = ("titre", "sous_categorie", "gravite", "statut", "date_survenue", "declare_par", "assigne_a")
+    list_filter = ("statut", "gravite", "categorie_evenement")
     search_fields = ("titre", "description")
     filter_horizontal = ("risques_lies",)
     inlines = [IncidentCommentaireInline, IncidentPieceJointeInline]

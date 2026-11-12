@@ -20,7 +20,7 @@ class IncidentListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         from apps.accounts.perimetre import filtrer_par_perimetre
-        qs = Incident.objects.select_related("declare_par", "assigne_a").all()
+        qs = Incident.objects.select_related("declare_par", "assigne_a", "sous_categorie__categorie").all()
         qs = filtrer_par_perimetre(qs, self.request.user, champ="direction")
         statut = self.request.GET.get("statut")
         gravite = self.request.GET.get("gravite")
@@ -53,6 +53,12 @@ class IncidentCreateView(LoginRequiredMixin, CreateView):
     model = Incident
     form_class = IncidentForm
     template_name = "incidents/incident_form.html"
+
+    def get_context_data(self, **kwargs):
+        from apps.risks.typologie import exemples_par_sous_categorie
+        ctx = super().get_context_data(**kwargs)
+        ctx["exemples_json"] = exemples_par_sous_categorie()
+        return ctx
 
     def form_valid(self, form):
         form.instance.declare_par = self.request.user
@@ -126,6 +132,14 @@ def analyse(request):
         if derniere and derniere.niveau_residuel in ("faible", "modere") and nb_incidents >= 1:
             risques_sous_cotes.append({"risque": risque, "nb_incidents": nb_incidents})
 
+    par_sous_categorie = list(
+        qs.exclude(sous_categorie=None)
+        .values("sous_categorie__libelle", "sous_categorie__categorie__libelle")
+        .annotate(total=Count("id"), perte=Sum("perte_brute"))
+        .order_by("-total", "sous_categorie__libelle")
+    )
+    sans_sous_categorie = qs.filter(sous_categorie=None).count()
+
     # Traduction lisible des catégories d'événement
     labels = dict(Incident.CategorieEvenement.choices)
     for ligne in par_categorie:
@@ -135,6 +149,8 @@ def analyse(request):
         "total_incidents": qs.count(),
         "par_categorie": par_categorie,
         "par_processus": par_processus,
+        "par_sous_categorie": par_sous_categorie,
+        "sans_sous_categorie": sans_sous_categorie,
         "perte_brute": perte_brute,
         "recuperation": recuperation,
         "perte_nette": perte_brute - recuperation,

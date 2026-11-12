@@ -47,3 +47,27 @@ class IncidentPerteNetteTests(TestCase):
             declare_par=self.declarant,
         )
         self.assertIsNone(incident.perte_nette)
+
+
+class IncidentTypologieTests(TestCase):
+    """La sous-catégorie fait foi ; la catégorie d'événement en est déduite."""
+
+    def setUp(self):
+        self.declarant = User.objects.create_user(username="declarant_i3", password="x", role="agent")
+
+    def test_categorie_deduite_de_la_sous_categorie(self):
+        from apps.risks.models import SousCategorieEvenement
+        sous = SousCategorieEvenement.objects.get(libelle="Systèmes")
+        incident = Incident.objects.create(
+            titre="Panne du core banking", description="x", date_survenue=datetime.date(2026, 8, 1),
+            declare_par=self.declarant, sous_categorie=sous,
+        )
+        self.assertEqual(incident.categorie_evenement, "interruption_si")
+
+    def test_incident_historique_sans_sous_categorie_conserve_sa_categorie(self):
+        incident = Incident.objects.create(
+            titre="Ancien incident", description="x", date_survenue=datetime.date(2026, 8, 1),
+            declare_par=self.declarant, categorie_evenement="fraude_externe",
+        )
+        self.assertEqual(incident.categorie_evenement, "fraude_externe")
+        self.assertIsNone(incident.sous_categorie)

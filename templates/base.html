@@ -538,6 +538,7 @@
       <a href="{% url 'dashboard:accueil' %}" class="{% if request.resolver_match.view_name == 'dashboard:accueil' %}active{% endif %}"><i class="bi bi-speedometer2"></i> Tableau de bord</a>
       <a href="{% url 'dashboard:perimetre' %}" class="{% if request.resolver_match.view_name == 'dashboard:perimetre' %}active{% endif %}" style="font-size:0.78rem; opacity:0.85;"><i class="bi bi-info-circle"></i> Ce que Rose fait</a>
       <a href="{% url 'risks:liste' %}" class="{% if 'risks:' in request.resolver_match.view_name %}active{% endif %}"><i class="bi bi-shield-exclamation"></i> Cartographie des risques</a>
+      <a href="{% url 'risks:typologie' %}" class="{% if request.resolver_match.view_name == 'risks:typologie' %}active{% endif %}"><i class="bi bi-diagram-2"></i> Typologie des événements</a>
       <a href="{% url 'dashboard:analyse_interactive' %}" class="{% if request.resolver_match.view_name == 'dashboard:analyse_interactive' %}active{% endif %}"><i class="bi bi-bar-chart"></i> Analyse interactive</a>
       <a href="{% url 'controles:liste' %}" class="{% if 'controles:' in request.resolver_match.view_name %}active{% endif %}"><i class="bi bi-check2-square"></i> Plan de contrôle</a>
       <a href="{% url 'incidents:liste' %}" class="{% if 'incidents:' in request.resolver_match.view_name %}active{% endif %}"><i class="bi bi-exclamation-triangle"></i> Incidents et pertes</a>

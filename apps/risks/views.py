@@ -8,7 +8,8 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from apps.accounts.permissions import peut_administrer, peut_gerer_risques
 from apps.accounts.perimetre import objet_ou_404_perimetre
 from .forms import ActionPlanForm, CampagneForm, ImportRisquesCSVForm, KeyRiskIndicatorForm, RiskCategoryForm, RiskEvaluationForm, RiskForm
-from .models import Risk, RiskCategory
+from .models import CategorieEvenement, Risk, RiskCategory, SousCategorieEvenement
+from .typologie import exemples_par_sous_categorie, trouver_sous_categorie
 
 
 class RiskListView(LoginRequiredMixin, ListView):
@@ -19,7 +20,7 @@ class RiskListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         from apps.accounts.perimetre import filtrer_par_perimetre
-        qs = Risk.objects.select_related("categorie", "direction").prefetch_related("evaluations").all()
+        qs = Risk.objects.select_related("categorie", "direction", "sous_categorie_evenement__categorie").prefetch_related("evaluations").all()
         qs = filtrer_par_perimetre(qs, self.request.user, champ="direction")
         statut = self.request.GET.get("statut")
         direction_id = self.request.GET.get("direction")
@@ -31,6 +32,12 @@ class RiskListView(LoginRequiredMixin, ListView):
             qs = qs.filter(direction_id=direction_id)
         if categorie_id:
             qs = qs.filter(categorie_id=categorie_id)
+        evenement_id = self.request.GET.get("evenement")
+        if evenement_id:
+            qs = qs.filter(sous_categorie_evenement__categorie_id=evenement_id)
+        sous_categorie_id = self.request.GET.get("sous_categorie")
+        if sous_categorie_id:
+            qs = qs.filter(sous_categorie_evenement_id=sous_categorie_id)
         if recherche:
             qs = qs.filter(titre__icontains=recherche)
         niveau = self.request.GET.get("niveau")
@@ -43,6 +50,7 @@ class RiskListView(LoginRequiredMixin, ListView):
         ctx = super().get_context_data(**kwargs)
         ctx["toutes_directions"] = Direction.objects.all()
         ctx["toutes_categories"] = RiskCategory.objects.all()
+        ctx["categories_evenement"] = CategorieEvenement.objects.all()
         return ctx
 
 
@@ -71,6 +79,21 @@ class RiskCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
     def test_func(self):
         return peut_gerer_risques(self.request.user)
+
+    def get_initial(self):
+        """Permet de créer un risque depuis la page Typologie : ?sous_categorie=<id>&titre=<exemple>."""
+        initial = super().get_initial()
+        sous_id = self.request.GET.get("sous_categorie")
+        if sous_id and sous_id.isdigit():
+            initial["sous_categorie_evenement"] = int(sous_id)
+        if self.request.GET.get("titre"):
+            initial["titre"] = self.request.GET["titre"][:200]
+        return initial
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["exemples_json"] = exemples_par_sous_categorie()
+        return ctx
 
     def get_success_url(self):
         messages.success(self.request, "Risque créé avec succès.")
@@ -118,6 +141,47 @@ def ajouter_plan_action(request, pk):
         form = ActionPlanForm()
 
     return render(request, "risks/action_plan_form.html", {"form": form, "risque": risque})
+
+
+@login_required
+def typologie_evenements(request):
+    """Typologie Bâle des événements de pertes (annexe de la Circulaire 003-2017/CB/C),
+    croisée avec la cartographie et les incidents : repère les types d'événement
+    pour lesquels aucun risque n'est cartographié, ou qui ont déjà produit des incidents."""
+    from django.db.models import Count
+    from apps.accounts.perimetre import filtrer_par_perimetre
+    from apps.incidents.models import Incident
+
+    risques = filtrer_par_perimetre(Risk.objects.exclude(sous_categorie_evenement=None), request.user, champ="direction")
+    incidents = filtrer_par_perimetre(Incident.objects.exclude(sous_categorie=None), request.user, champ="direction")
+    nb_risques = dict(risques.order_by().values_list("sous_categorie_evenement").annotate(n=Count("id")))
+    nb_incidents = dict(incidents.order_by().values_list("sous_categorie").annotate(n=Count("id")))
+
+    categories = []
+    nb_total = nb_couvertes = 0
+    for cat in CategorieEvenement.objects.prefetch_related("sous_categories"):
+        sous_liste = []
+        for sous in cat.sous_categories.all():
+            nr, ni = nb_risques.get(sous.pk, 0), nb_incidents.get(sous.pk, 0)
+            sous_liste.append({"sous": sous, "nb_risques": nr, "nb_incidents": ni, "exemples": sous.liste_exemples})
+            nb_total += 1
+            nb_couvertes += 1 if nr else 0
+        categories.append({
+            "categorie": cat,
+            "sous_categories": sous_liste,
+            "nb_risques": sum(x["nb_risques"] for x in sous_liste),
+            "nb_incidents": sum(x["nb_incidents"] for x in sous_liste),
+            "nb_non_couvertes": sum(1 for x in sous_liste if not x["nb_risques"]),
+        })
+
+    return render(request, "risks/typologie.html", {
+        "categories": categories,
+        "nb_total": nb_total,
+        "nb_couvertes": nb_couvertes,
+        "nb_non_couvertes": nb_total - nb_couvertes,
+        "peut_gerer": peut_gerer_risques(request.user),
+        "risques_non_classes": filtrer_par_perimetre(Risk.objects.filter(sous_categorie_evenement=None), request.user, champ="direction").count(),
+    })
 
 
 @login_required
@@ -264,6 +328,11 @@ class RiskUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def test_func(self):
         return peut_gerer_risques(self.request.user)
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["exemples_json"] = exemples_par_sous_categorie()
+        return ctx
+
     def get_success_url(self):
         messages.success(self.request, "Risque mis à jour.")
         return reverse("risks:detail", kwargs={"pk": self.object.pk})
@@ -324,8 +393,8 @@ def cloturer_campagne(request, pk):
     return redirect("risks:campagnes")
 
 
-COLONNES_IMPORT = ["titre", "categorie", "direction", "processus", "description"]
-EN_TETES_IMPORT = ["Titre du risque", "Catégorie", "Direction / Entité", "Processus", "Description"]
+COLONNES_IMPORT = ["titre", "categorie", "type_evenement", "direction", "processus", "description"]
+EN_TETES_IMPORT = ["Titre du risque", "Catégorie", "Type d'événement (Bâle)", "Direction / Entité", "Processus", "Description"]
 TITRE_EXEMPLE_MODELE = "Défaut de contrepartie sur le portefeuille PME"
 
 
@@ -347,11 +416,11 @@ def modele_import_risques(request):
 
     ws.append([
         "Défaut de contrepartie sur le portefeuille PME", "Risque de crédit",
-        "Direction des engagements", "Octroi et suivi du crédit",
+        "Sélection, promotion et exposition", "Direction des engagements", "Octroi et suivi du crédit",
         "Dégradation de la situation financière des emprunteurs (exemple — à remplacer ou supprimer)",
     ])
 
-    largeurs = [45, 22, 28, 25, 55]
+    largeurs = [45, 22, 36, 28, 25, 55]
     for i, largeur in enumerate(largeurs, start=1):
         ws.column_dimensions[chr(64 + i)].width = largeur
 
@@ -363,7 +432,10 @@ def modele_import_risques(request):
         "Une ligne = un risque. Ne modifiez pas les en-têtes de la première feuille.",
         "",
         "Titre du risque : obligatoire. Le nom du risque tel qu'il apparaîtra dans Rose.",
-        "Catégorie : obligatoire. Si elle n'existe pas encore dans Rose, elle sera créée automatiquement.",
+        "Catégorie : obligatoire sauf si le type d'événement est renseigné (la catégorie est alors déduite). Si elle n'existe pas encore dans Rose, elle sera créée automatiquement.",
+        "Type d'événement (Bâle) : optionnel. Sous-catégorie de la typologie de la Circulaire 003-2017/CB/C, ex. « Prestataires » ou « Fraude interne > Vol et fraude ».",
+        "   Quand le libellé existe dans deux catégories (« Vol et fraude »), préfixez-le par la catégorie : « Fraude externe > Vol et fraude ».",
+        "   La liste complète est consultable dans Rose (Typologie des événements). Un libellé inconnu n'empêche pas l'import : le risque est créé sans type, et signalé.",
         "Direction / Entité : optionnel. Si elle n'existe pas encore dans Rose, elle sera créée automatiquement.",
         "Processus : optionnel. Le processus métier concerné (ex: Octroi et suivi du crédit).",
         "Description : optionnel.",
@@ -394,18 +466,19 @@ def exporter_risques_csv(request):
     ws = wb.active
     ws.title = "Risques"
 
-    entetes = ["Code", "Titre", "Catégorie", "Direction", "Processus", "Statut", "Inhérent", "Maîtrise", "Résiduel", "Niveau", "Description"]
+    entetes = ["Code", "Titre", "Catégorie", "Type d'événement (Bâle)", "Direction", "Processus", "Statut", "Inhérent", "Maîtrise", "Résiduel", "Niveau", "Description"]
     ws.append(entetes)
     for cell in ws[1]:
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="15313D", end_color="15313D", fill_type="solid")
 
-    for risque in Risk.objects.select_related("categorie", "direction").prefetch_related("evaluations"):
+    for risque in Risk.objects.select_related("categorie", "direction", "sous_categorie_evenement__categorie").prefetch_related("evaluations"):
         derniere = risque.derniere_evaluation
         ws.append([
             f"R-{risque.pk:03d}",
             risque.titre,
             risque.categorie.nom,
+            str(risque.sous_categorie_evenement) if risque.sous_categorie_evenement else "",
             risque.direction.nom if risque.direction else "",
             risque.processus,
             risque.get_statut_display(),
@@ -416,7 +489,7 @@ def exporter_risques_csv(request):
             risque.description,
         ])
 
-    for i, largeur in enumerate([10, 40, 20, 25, 22, 12, 10, 10, 10, 12, 50], start=1):
+    for i, largeur in enumerate([10, 40, 20, 40, 25, 22, 12, 10, 10, 10, 12, 50], start=1):
         ws.column_dimensions[chr(64 + i)].width = largeur
 
     response = HttpResponse(
@@ -463,6 +536,8 @@ def importer_risques_csv(request):
             alias_colonnes = {
                 "titre": "titre", "titre du risque": "titre",
                 "categorie": "categorie", "categorie de risque": "categorie",
+                "type d'evenement": "type_evenement", "type d'evenement (bale)": "type_evenement",
+                "type evenement": "type_evenement", "sous-categorie": "type_evenement",
                 "direction": "direction", "direction / entite": "direction", "entite": "direction",
                 "processus": "processus",
                 "description": "description",
@@ -495,8 +570,14 @@ def importer_risques_csv(request):
                         erreurs.append(f"Ligne {i} : titre manquant, ignorée.")
                     continue
 
-                nom_categorie = valeur(ligne, "categorie") or "Non classé"
-                categorie, _ = RiskCategory.objects.get_or_create(nom=nom_categorie)
+                sous_categorie, probleme = trouver_sous_categorie(valeur(ligne, "type_evenement"))
+                if probleme:
+                    erreurs.append(f"Ligne {i} : {probleme} — risque créé sans type d'événement.")
+
+                nom_categorie = valeur(ligne, "categorie")
+                if not nom_categorie and sous_categorie:
+                    nom_categorie = sous_categorie.categorie.libelle
+                categorie, _ = RiskCategory.objects.get_or_create(nom=nom_categorie or "Non classé")
 
                 direction = None
                 nom_direction = valeur(ligne, "direction")
@@ -507,6 +588,7 @@ def importer_risques_csv(request):
                 Risk.objects.create(
                     titre=titre,
                     categorie=categorie,
+                    sous_categorie_evenement=sous_categorie,
                     direction=direction,
                     processus=valeur(ligne, "processus"),
                     description=valeur(ligne, "description"),

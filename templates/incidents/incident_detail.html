@@ -28,6 +28,7 @@
   <p class="text-muted small mb-0">
     Survenu le {{ incident.date_survenue|date:"d/m/Y" }}{% if incident.date_detection %} · Détecté le {{ incident.date_detection|date:"d/m/Y" }} (+{{ incident.delai_detection_jours }} j){% endif %} · Entité : {{ incident.direction|default:"—" }} · Processus : {{ incident.processus_concerne|default:"—" }}
     {% if incident.perte_brute %} · Perte brute : {{ incident.perte_brute }} FCFA{% if incident.recuperation %} (récupéré : {{ incident.recuperation }}){% endif %}{% endif %}
+    {% if incident.sous_categorie %}<br>Type d'événement : {{ incident.sous_categorie }}{% elif incident.categorie_evenement %}<br>Catégorie d'événement : {{ incident.get_categorie_evenement_display }}{% endif %}
     <br>Déclaré par {{ incident.declare_par }} · Assigné à {{ incident.assigne_a|default:"personne pour le moment" }}
   </p>
   {% if incident.risques_lies.all %}

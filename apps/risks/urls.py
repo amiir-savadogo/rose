@@ -11,6 +11,7 @@ urlpatterns = [
     path("import/", views.importer_risques_csv, name="import_csv"),
     path("import/modele.xlsx", views.modele_import_risques, name="import_modele"),
     path("nouveau/", views.RiskCreateView.as_view(), name="creer"),
+    path("typologie/", views.typologie_evenements, name="typologie"),
     path("categories/", views.RiskCategoryListView.as_view(), name="categories"),
     path("categories/nouvelle/", views.RiskCategoryCreateView.as_view(), name="categorie_creer"),
     path("indicateurs/", views.KeyRiskIndicatorListView.as_view(), name="indicateurs"),

@@ -1,0 +1,23 @@
+{# Aide contextuelle : affiche les exemples de la circulaire sous le champ « type d'événement ». Variables : exemples_json, champ_id #}
+{{ exemples_json|json_script:"data-exemples-evenement" }}
+<script>
+(function () {
+  var select = document.getElementById("{{ champ_id }}");
+  if (!select) return;
+  var exemples = JSON.parse(document.getElementById("data-exemples-evenement").textContent);
+  var zone = document.createElement("div");
+  zone.className = "form-text small";
+  select.parentNode.appendChild(zone);
+  function maj() {
+    var liste = exemples[select.value] || [];
+    zone.textContent = "";
+    if (!liste.length) return;
+    var titre = document.createElement("strong");
+    titre.textContent = "Exemples d'événements : ";
+    zone.appendChild(titre);
+    zone.appendChild(document.createTextNode(liste.join(" · ")));
+  }
+  select.addEventListener("change", maj);
+  maj();
+})();
+</script>

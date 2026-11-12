@@ -48,6 +48,50 @@ class RiskCategory(models.Model):
         return self.nom
 
 
+class CategorieEvenement(models.Model):
+    """Catégorie d'événement de risque opérationnel (niveau 1 de la typologie Bâle).
+
+    Référentiel issu de l'annexe de la Circulaire 003-2017/CB/C. Chargé à
+    l'installation (migration 0006) ; modifiable depuis l'administration.
+    """
+
+    code = models.CharField(max_length=30, unique=True)
+    libelle = models.CharField(max_length=200)
+    ordre = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Catégorie d'événement"
+        verbose_name_plural = "Catégories d'événement"
+        ordering = ["ordre", "libelle"]
+
+    def __str__(self):
+        return self.libelle
+
+
+class SousCategorieEvenement(models.Model):
+    """Sous-catégorie d'événement (niveau 2), avec les exemples de la circulaire."""
+
+    categorie = models.ForeignKey(CategorieEvenement, on_delete=models.CASCADE, related_name="sous_categories")
+    libelle = models.CharField(max_length=200)
+    exemples = models.TextField(blank=True, help_text="Un exemple par ligne")
+    ordre = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Sous-catégorie d'événement"
+        verbose_name_plural = "Sous-catégories d'événement"
+        ordering = ["categorie__ordre", "ordre", "libelle"]
+        constraints = [
+            models.UniqueConstraint(fields=["categorie", "libelle"], name="unique_sous_categorie_par_categorie"),
+        ]
+
+    def __str__(self):
+        return f"{self.categorie.libelle} › {self.libelle}"
+
+    @property
+    def liste_exemples(self):
+        return [ligne.strip() for ligne in self.exemples.splitlines() if ligne.strip()]
+
+
 class NiveauCotation(models.IntegerChoices):
     TRES_FAIBLE = 1, "Très faible"
     FAIBLE = 2, "Faible"
@@ -70,6 +114,11 @@ class Risk(models.Model):
     direction = models.ForeignKey(
         "accounts.Direction", null=True, blank=True, on_delete=models.SET_NULL, related_name="risques"
     )
+    sous_categorie_evenement = models.ForeignKey(
+        SousCategorieEvenement, null=True, blank=True, on_delete=models.SET_NULL, related_name="risques",
+        verbose_name="Type d'événement (Bâle)",
+        help_text="Classification de l'annexe de la Circulaire 003-2017/CB/C",
+    )
     processus = models.CharField(max_length=200, blank=True, help_text="Processus métier concerné")
     statut = models.CharField(max_length=20, choices=Statut.choices, default=Statut.ACTIF)
     proprietaire = models.ForeignKey(
@@ -89,6 +138,11 @@ class Risk(models.Model):
     @property
     def derniere_evaluation(self):
         return self.evaluations.order_by("-date_evaluation").first()
+
+    @property
+    def categorie_evenement(self):
+        """Catégorie d'événement (niveau 1), déduite de la sous-catégorie."""
+        return self.sous_categorie_evenement.categorie if self.sous_categorie_evenement_id else None
 
 
 class RiskEvaluation(models.Model):

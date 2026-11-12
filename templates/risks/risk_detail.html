@@ -16,7 +16,7 @@
 <div class="rose-page-header">
   <div>
     <h2>R-{{ risque.pk|stringformat:"03d" }} — {{ risque.titre }}</h2>
-    <div class="subtitle">{{ risque.categorie }} · {{ risque.direction|default:"—" }} · {{ risque.processus|default:"—" }}</div>
+    <div class="subtitle">{{ risque.categorie }}{% if risque.sous_categorie_evenement %} · <span title="Typologie des événements de pertes opérationnelles">{{ risque.sous_categorie_evenement }}</span>{% endif %} · {{ risque.direction|default:"—" }} · {{ risque.processus|default:"—" }}</div>
   </div>
   {% if peut_gerer %}
   <div>

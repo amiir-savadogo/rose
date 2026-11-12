@@ -1,6 +1,8 @@
 from django.contrib import admin
 
-from .models import ActionPlan, KeyRiskIndicator, Risk, RiskCategory, RiskEvaluation
+from .models import (
+    ActionPlan, CategorieEvenement, KeyRiskIndicator, Risk, RiskCategory, RiskEvaluation, SousCategorieEvenement,
+)
 
 
 class RiskEvaluationInline(admin.TabularInline):
@@ -28,10 +30,24 @@ class RiskCategoryAdmin(admin.ModelAdmin):
     list_display = ("nom",)
 
 
+class SousCategorieEvenementInline(admin.TabularInline):
+    model = SousCategorieEvenement
+    extra = 0
+
+
+@admin.register(CategorieEvenement)
+class CategorieEvenementAdmin(admin.ModelAdmin):
+    """Typologie des événements de pertes (Circulaire 003-2017/CB/C, annexe) — modifiable, mais
+    le code d'une catégorie ne doit pas changer : il relie le référentiel aux incidents."""
+    list_display = ("ordre", "libelle", "code")
+    list_display_links = ("libelle",)
+    inlines = [SousCategorieEvenementInline]
+
+
 @admin.register(Risk)
 class RiskAdmin(admin.ModelAdmin):
-    list_display = ("titre", "categorie", "direction", "statut", "proprietaire", "modifie_le")
-    list_filter = ("statut", "categorie", "direction")
+    list_display = ("titre", "categorie", "sous_categorie_evenement", "direction", "statut", "proprietaire", "modifie_le")
+    list_filter = ("statut", "categorie", "sous_categorie_evenement__categorie", "direction")
     search_fields = ("titre", "description")
     inlines = [RiskEvaluationInline, ActionPlanInline, KeyRiskIndicatorInline]
 

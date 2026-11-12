@@ -170,3 +170,90 @@ class ActionPlanStatutAutomatiqueTests(TestCase):
     def test_avancement_intermediaire_est_en_cours(self):
         plan = self._plan(50, datetime.date(2099, 1, 1))
         self.assertEqual(plan.statut, ActionPlan.Statut.EN_COURS)
+
+
+class TypologieEvenementsTests(TestCase):
+    """La typologie de l'annexe de la Circulaire 003-2017/CB/C est chargée par migration."""
+
+    def test_referentiel_charge_par_la_migration(self):
+        from apps.risks.models import CategorieEvenement, SousCategorieEvenement
+        self.assertEqual(CategorieEvenement.objects.count(), 7)
+        self.assertEqual(SousCategorieEvenement.objects.count(), 20)
+
+    def test_codes_alignes_sur_les_incidents(self):
+        """Le code d'une catégorie est la valeur de Incident.categorie_evenement."""
+        from apps.incidents.models import Incident
+        from apps.risks.models import CategorieEvenement
+        codes = set(CategorieEvenement.objects.values_list("code", flat=True))
+        self.assertEqual(codes, {valeur for valeur, _ in Incident.CategorieEvenement.choices})
+
+    def test_rechargement_sans_doublon(self):
+        from apps.risks.models import CategorieEvenement, SousCategorieEvenement
+        from apps.risks.taxonomie import charger_typologie
+        charger_typologie(CategorieEvenement, SousCategorieEvenement, RiskCategory)
+        charger_typologie(CategorieEvenement, SousCategorieEvenement, RiskCategory)
+        self.assertEqual(SousCategorieEvenement.objects.count(), 20)
+
+    def test_vol_et_fraude_existe_en_fraude_interne_et_externe(self):
+        from apps.risks.models import SousCategorieEvenement
+        self.assertEqual(SousCategorieEvenement.objects.filter(libelle="Vol et fraude").count(), 2)
+
+    def test_exemples_disponibles(self):
+        from apps.risks.models import SousCategorieEvenement
+        presta = SousCategorieEvenement.objects.get(libelle="Prestataires")
+        self.assertEqual(presta.liste_exemples, ["Externalisation", "Conflits avec les prestataires"])
+
+
+class TrouverSousCategorieTests(TestCase):
+    """Rapprochement d'un libellé saisi dans Excel avec la typologie."""
+
+    def test_libelle_unique_sans_accent_ni_casse(self):
+        from apps.risks.typologie import trouver_sous_categorie
+        sous, erreur = trouver_sous_categorie("prestataires")
+        self.assertEqual(sous.libelle, "Prestataires")
+        self.assertEqual(erreur, "")
+
+    def test_libelle_ambigu_refuse(self):
+        from apps.risks.typologie import trouver_sous_categorie
+        sous, erreur = trouver_sous_categorie("Vol et fraude")
+        self.assertIsNone(sous)
+        self.assertIn("ambigu", erreur)
+
+    def test_libelle_precise_par_la_categorie(self):
+        from apps.risks.typologie import trouver_sous_categorie
+        sous, _ = trouver_sous_categorie("Fraude externe > Vol et fraude")
+        self.assertEqual(sous.categorie.code, "fraude_externe")
+
+    def test_inconnu_signale(self):
+        from apps.risks.typologie import trouver_sous_categorie
+        sous, erreur = trouver_sous_categorie("Dégât des eaux")
+        self.assertIsNone(sous)
+        self.assertIn("non reconnu", erreur)
+
+    def test_vide_ignore(self):
+        from apps.risks.typologie import trouver_sous_categorie
+        self.assertEqual(trouver_sous_categorie(""), (None, ""))
+
+
+class RiskFormTypologieTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="rm_typo", password="x", role="risk_manager")
+
+    def test_categorie_deduite_du_type_d_evenement(self):
+        from apps.risks.forms import RiskForm
+        from apps.risks.models import SousCategorieEvenement
+        sous = SousCategorieEvenement.objects.get(libelle="Prestataires")
+        form = RiskForm(data={
+            "titre": "Défaillance d'un prestataire critique", "sous_categorie_evenement": sous.pk,
+            "statut": "actif",
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+        risque = form.save()
+        self.assertEqual(risque.categorie.nom, sous.categorie.libelle)
+        self.assertEqual(risque.categorie_evenement, sous.categorie)
+
+    def test_ni_type_ni_categorie_refuse(self):
+        from apps.risks.forms import RiskForm
+        form = RiskForm(data={"titre": "Risque sans classement", "statut": "actif"})
+        self.assertFalse(form.is_valid())
+        self.assertIn("categorie", form.errors)

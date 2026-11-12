@@ -23,15 +23,19 @@ class Incident(models.Model):
         """Catégories d'événements de risque opérationnel (typologie Bâle II)."""
         FRAUDE_INTERNE = "fraude_interne", "Fraude interne"
         FRAUDE_EXTERNE = "fraude_externe", "Fraude externe"
-        PRATIQUES_RH = "pratiques_rh", "Pratiques en matière d'emploi"
-        CLIENTS_PRODUITS = "clients_produits", "Clients, produits et pratiques commerciales"
-        DOMMAGES_ACTIFS = "dommages_actifs", "Dommages aux actifs corporels"
-        INTERRUPTION_SI = "interruption_si", "Interruption d'activité et dysfonctionnement des systèmes"
-        EXECUTION_LIVRAISON = "execution_livraison", "Exécution, livraison et gestion des processus"
+        PRATIQUES_RH = "pratiques_rh", "Pratiques en matière d'emploi et sécurité sur le lieu de travail"
+        CLIENTS_PRODUITS = "clients_produits", "Pratiques concernant les clients, les produits et l'activité commerciale"
+        DOMMAGES_ACTIFS = "dommages_actifs", "Dommages occasionnés aux actifs physiques"
+        INTERRUPTION_SI = "interruption_si", "Interruptions d'activités et défaillance des systèmes"
+        EXECUTION_LIVRAISON = "execution_livraison", "Exécution des opérations, livraison et gestion des processus"
 
     titre = models.CharField(max_length=200)
     description = models.TextField()
     categorie_evenement = models.CharField(max_length=30, choices=CategorieEvenement.choices, blank=True)
+    sous_categorie = models.ForeignKey(
+        "risks.SousCategorieEvenement", null=True, blank=True, on_delete=models.SET_NULL,
+        related_name="incidents", verbose_name="Sous-catégorie d'événement",
+    )
     date_survenue = models.DateField()
     date_detection = models.DateField(null=True, blank=True)
     direction = models.ForeignKey("accounts.Direction", null=True, blank=True, on_delete=models.SET_NULL, related_name="incidents")
@@ -58,6 +62,13 @@ class Incident(models.Model):
 
     def __str__(self):
         return self.titre
+
+    def save(self, *args, **kwargs):
+        # La sous-catégorie fait foi : la catégorie (niveau 1) en est déduite, pour que
+        # les tableaux de bord existants, qui lisent categorie_evenement, restent justes.
+        if self.sous_categorie_id:
+            self.categorie_evenement = self.sous_categorie.categorie.code
+        super().save(*args, **kwargs)
 
     @property
     def delai_detection_jours(self):
