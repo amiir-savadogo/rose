@@ -1,5 +1,5 @@
 from django.contrib.auth.decorators import login_required
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.shortcuts import render
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
@@ -40,11 +40,14 @@ def _donnees_synthese(user):
     executions_qs = filtrer_par_perimetre(
         ControleExecution.objects.select_related("controle", "controle__direction"), user, champ="controle__direction"
     )
-    executions_en_retard = [e for e in executions_qs if e.en_retard]
-    executions_sans_preuve = [
-        e for e in executions_qs.exclude(resultat=ControleExecution.Resultat.NON_REALISE)
-        if e.preuve_manquante
-    ]
+    executions_en_retard = list(executions_qs.filter(
+        resultat=ControleExecution.Resultat.NON_REALISE, date_prevue__lt=timezone.now().date()
+    ))
+    executions_sans_preuve = list(
+        executions_qs.filter(
+            resultat__in=[ControleExecution.Resultat.CONFORME, ControleExecution.Resultat.NON_CONFORME]
+        ).filter(Q(preuve="") | Q(preuve__isnull=True))
+    )
 
     heatmap = {}
     for risque, derniere in [(r, r.derniere_evaluation) for r in risques_actifs if r.derniere_evaluation]:

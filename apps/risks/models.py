@@ -137,7 +137,11 @@ class Risk(models.Model):
 
     @property
     def derniere_evaluation(self):
-        return self.evaluations.order_by("-date_evaluation").first()
+        # Quand les évaluations ont été préchargées (prefetch_related), on les exploite : l'ancien
+        # `.order_by().first()` ignorait le préchargement et coûtait une requête par risque.
+        if "evaluations" in getattr(self, "_prefetched_objects_cache", {}):
+            return max(self.evaluations.all(), key=lambda e: (e.date_evaluation, e.pk), default=None)
+        return self.evaluations.order_by("-date_evaluation", "-pk").first()
 
     @property
     def categorie_evenement(self):

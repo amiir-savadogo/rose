@@ -6,7 +6,8 @@ from django.urls import reverse
 from django.views.generic import CreateView, ListView
 
 from apps.accounts.permissions import peut_gerer_controles
-from apps.accounts.perimetre import objet_ou_404_perimetre
+from apps.accounts.perimetre import FormulaireAvecUtilisateurMixin, objet_ou_404_perimetre
+from config.fichiers import reponse_telechargement
 from .forms import ControleForm, ProgrammerExecutionForm, RenseignerExecutionForm
 from .models import Controle, ControleExecution
 
@@ -22,7 +23,7 @@ class ControleListView(LoginRequiredMixin, ListView):
         return filtrer_par_perimetre(qs, self.request.user, champ="direction")
 
 
-class ControleCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+class ControleCreateView(FormulaireAvecUtilisateurMixin, LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Controle
     form_class = ControleForm
     template_name = "controles/controle_form.html"
@@ -69,6 +70,13 @@ def programmer_execution(request, pk):
 @login_required
 def renseigner_execution(request, pk):
     execution = objet_ou_404_perimetre(ControleExecution, request.user, pk, champ="controle__direction")
+    controle = execution.controle
+    if not (
+        peut_gerer_controles(request.user)
+        or request.user.pk in (controle.executant_id, controle.superviseur_id)
+    ):
+        messages.error(request, "Seuls l'exécutant, le superviseur ou un gestionnaire des contrôles peuvent renseigner cette exécution.")
+        return redirect("controles:executions")
     if request.method == "POST":
         form = RenseignerExecutionForm(request.POST, request.FILES, instance=execution)
         if form.is_valid():
@@ -84,7 +92,7 @@ def renseigner_execution(request, pk):
 from django.views.generic import UpdateView
 
 
-class ControleUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+class ControleUpdateView(FormulaireAvecUtilisateurMixin, LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Controle
     form_class = ControleForm
     template_name = "controles/controle_form.html"
@@ -100,3 +108,10 @@ class ControleUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     def form_valid(self, form):
         messages.success(self.request, "Contrôle mis à jour.")
         return super().form_valid(form)
+
+
+@login_required
+def telecharger_preuve(request, pk):
+    """Téléchargement d'une preuve de contrôle : authentifié, limité au périmètre, en pièce jointe."""
+    execution = objet_ou_404_perimetre(ControleExecution, request.user, pk, champ="controle__direction")
+    return reponse_telechargement(execution.preuve)

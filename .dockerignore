@@ -7,3 +7,6 @@ media/
 staticfiles/
 db.sqlite3
 .venv/
+.env.*
+.security-audit/
+docker-compose*.yml

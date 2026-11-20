@@ -3,6 +3,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, ListView
 
 from apps.accounts.permissions import peut_gerer_echeance, peut_gerer_obligations
@@ -30,6 +31,7 @@ class ObligationOccurrenceListView(LoginRequiredMixin, ListView):
 
 
 @login_required
+@require_POST
 def marquer_realisee(request, pk):
     occurrence = get_object_or_404(ObligationOccurrence, pk=pk)
     if not peut_gerer_echeance(request.user, occurrence):

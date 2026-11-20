@@ -3,15 +3,13 @@
 Chaque création / modification / suppression sur un modèle listé dans
 AUDITED_MODELS déclenche l'écriture d'une entrée dans AuditLogEntry.
 """
+from django.conf import settings
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db.models.signals import post_save, pre_save, post_delete
 from django.forms.models import model_to_dict
 
 from .middleware import get_current_user
 from .models import AuditLogEntry
-
-# Cache des valeurs "avant" chargées juste avant sauvegarde
-_avant_cache = {}
 
 
 def _serialisable(data):
@@ -20,16 +18,20 @@ def _serialisable(data):
 
 
 def capturer_avant(sender, instance, **kwargs):
+    """Mémorise l'état « avant » sur l'instance elle-même (pas dans un cache global partagé
+    entre requêtes : pas de fuite mémoire si la sauvegarde échoue, pas de collision)."""
+    instance._audit_avant = None
     if instance.pk:
         try:
             ancien = sender.objects.get(pk=instance.pk)
-            _avant_cache[(sender, instance.pk)] = _serialisable(model_to_dict(ancien))
+            instance._audit_avant = _serialisable(model_to_dict(ancien))
         except sender.DoesNotExist:
-            _avant_cache[(sender, instance.pk)] = None
+            pass
 
 
 def journaliser_sauvegarde(sender, instance, created, **kwargs):
-    avant = _avant_cache.pop((sender, instance.pk), None)
+    avant = getattr(instance, "_audit_avant", None)
+    instance._audit_avant = None
     apres = _serialisable(model_to_dict(instance))
     AuditLogEntry.objects.create(
         utilisateur=get_current_user() if getattr(get_current_user(), "is_authenticated", False) else None,
@@ -72,13 +74,25 @@ def connecter_modeles_audites():
         post_delete.connect(journaliser_suppression, sender=modele, weak=False)
 
 
-def _adresse_ip(request):
+def adresse_ip(request):
+    """Adresse IP du client, résistante à la falsification de X-Forwarded-For.
+
+    Derrière N proxys de confiance (TRUSTED_PROXY_COUNT), seule la N-ième valeur en partant de
+    la droite a été ajoutée par un proxy de confiance ; tout ce qui est à sa gauche vient du
+    client et ne doit jamais être cru. Hors proxy, on utilise REMOTE_ADDR.
+    """
     if not request:
         return None
-    xff = request.META.get("HTTP_X_FORWARDED_FOR")
-    if xff:
-        return xff.split(",")[0].strip()
+    if getattr(settings, "BEHIND_PROXY", False):
+        xff = request.META.get("HTTP_X_FORWARDED_FOR", "")
+        elements = [e.strip() for e in xff.split(",") if e.strip()]
+        if elements:
+            n = max(1, getattr(settings, "TRUSTED_PROXY_COUNT", 1))
+            return elements[-n] if len(elements) >= n else elements[0]
     return request.META.get("REMOTE_ADDR")
+
+
+_adresse_ip = adresse_ip  # alias de compatibilité
 
 
 def journaliser_connexion_reussie(sender, request, user, **kwargs):
@@ -94,7 +108,8 @@ def journaliser_connexion_reussie(sender, request, user, **kwargs):
 
 
 def journaliser_connexion_echouee(sender, credentials, request=None, **kwargs):
-    identifiant = credentials.get("username", "?")
+    # Tronqué : un utilisateur peut, par erreur, saisir son mot de passe dans le champ identifiant.
+    identifiant = str(credentials.get("username", "?"))[:150]
     AuditLogEntry.objects.create(
         utilisateur=None,
         action=AuditLogEntry.Action.CREATION,

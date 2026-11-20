@@ -16,13 +16,18 @@ class AuditLogListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return peut_consulter_audit(self.request.user)
 
     def get_queryset(self):
-        qs = AuditLogEntry.objects.select_related("utilisateur").order_by("-horodatage")[:300]
+        qs = AuditLogEntry.objects.select_related("utilisateur").order_by("-horodatage")
         action = self.request.GET.get("action")
-        recherche = self.request.GET.get("q")
+        recherche = (self.request.GET.get("q") or "").strip()
         if action:
-            qs = [e for e in qs if e.action == action]
+            qs = qs.filter(action=action)
         if recherche:
-            qs = [e for e in qs if recherche.lower() in (e.objet_repr or "").lower()
-                  or recherche.lower() in (e.utilisateur.username if e.utilisateur else "système").lower()
-                  or recherche.lower() in (e.modele or "").lower()]
+            filtre = (
+                Q(objet_repr__icontains=recherche)
+                | Q(utilisateur__username__icontains=recherche)
+                | Q(modele__icontains=recherche)
+            )
+            if recherche.lower() in "système":  # actions sans utilisateur (système)
+                filtre |= Q(utilisateur__isnull=True)
+            qs = qs.filter(filtre)
         return qs

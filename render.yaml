@@ -10,7 +10,7 @@ services:
     runtime: docker
     plan: free
     dockerfilePath: ./Dockerfile
-    healthCheckPath: /accounts/login/
+    healthCheckPath: /healthz/
     envVars:
       - key: PORT
         value: "8000"
@@ -18,8 +18,12 @@ services:
         value: "False"
       - key: DJANGO_SECRET_KEY
         generateValue: true
-      - key: DJANGO_ALLOWED_HOSTS
-        value: ".onrender.com"
+      # L'hôte exact du service est ajouté automatiquement (RENDER_EXTERNAL_HOSTNAME).
+      # Pour un domaine personnalisé : DJANGO_ALLOWED_HOSTS et DJANGO_CSRF_TRUSTED_ORIGINS.
+      - key: DJANGO_SSL_REDIRECT
+        value: "True"
+      - key: DJANGO_HSTS_SECONDS
+        value: "2592000"
       - key: POSTGRES_DB
         fromDatabase: { name: rose-db, property: database }
       - key: POSTGRES_USER
@@ -32,7 +36,8 @@ services:
         fromDatabase: { name: rose-db, property: port }
       - key: DJANGO_SUPERUSER_USERNAME
         value: admin
+      # À renseigner dans le tableau de bord Render (jamais dans ce fichier public).
       - key: DJANGO_SUPERUSER_EMAIL
-        value: rachelganeshbhasin@gmail.com
+        sync: false
       - key: DJANGO_SUPERUSER_PASSWORD
         sync: false

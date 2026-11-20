@@ -16,7 +16,7 @@ class AuditLogEntry(models.Model):
         MODIFICATION = "modification", "Modification"
         SUPPRESSION = "suppression", "Suppression"
 
-    horodatage = models.DateTimeField(auto_now_add=True)
+    horodatage = models.DateTimeField(auto_now_add=True, db_index=True)
     utilisateur = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="actions_journalisees"
     )

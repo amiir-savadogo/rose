@@ -1,4 +1,6 @@
 from django import forms
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 from .models import Direction, User
 
@@ -38,6 +40,16 @@ class UserCreateForm(forms.ModelForm):
             self.add_error("password2", "Les deux mots de passe ne correspondent pas.")
         return cleaned
 
+    def _post_clean(self):
+        super()._post_clean()
+        # Politique de mot de passe (AUTH_PASSWORD_VALIDATORS), appliquée aussi dans l'interface.
+        p1 = self.cleaned_data.get("password1")
+        if p1:
+            try:
+                validate_password(p1, self.instance)
+            except ValidationError as erreur:
+                self.add_error("password1", erreur)
+
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data["password1"])
@@ -65,10 +77,20 @@ class ReinitialiserMotDePasseForm(forms.Form):
     password1 = forms.CharField(label="Nouveau mot de passe", widget=forms.PasswordInput(attrs={"class": "form-control"}))
     password2 = forms.CharField(label="Confirmation", widget=forms.PasswordInput(attrs={"class": "form-control"}))
 
+    def __init__(self, *args, user=None, **kwargs):
+        self.user = user
+        super().__init__(*args, **kwargs)
+
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("password1") != cleaned.get("password2"):
+        p1 = cleaned.get("password1")
+        if p1 != cleaned.get("password2"):
             self.add_error("password2", "Les deux mots de passe ne correspondent pas.")
+        elif p1:
+            try:
+                validate_password(p1, self.user)
+            except ValidationError as erreur:
+                self.add_error("password1", erreur)
         return cleaned
 
 
@@ -103,6 +125,12 @@ class ChangerMotDePasseForm(forms.Form):
 
     def clean(self):
         cleaned = super().clean()
-        if cleaned.get("password1") != cleaned.get("password2"):
+        p1 = cleaned.get("password1")
+        if p1 != cleaned.get("password2"):
             self.add_error("password2", "Les deux mots de passe ne correspondent pas.")
+        elif p1:
+            try:
+                validate_password(p1, self.user)
+            except ValidationError as erreur:
+                self.add_error("password1", erreur)
         return cleaned

@@ -1,0 +1,8 @@
+# Surcouche de DÉVELOPPEMENT uniquement (code source monté à chaud) :
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+# Ne jamais l'utiliser en production.
+services:
+  web:
+    user: "0:0"
+    volumes:
+      - .:/app

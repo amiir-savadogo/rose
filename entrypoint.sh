@@ -35,20 +35,34 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 django.setup()
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 
 User = get_user_model()
 username = os.environ.get("DJANGO_SUPERUSER_USERNAME", "admin")
+password = os.environ.get("DJANGO_SUPERUSER_PASSWORD", "")
 
-if not User.objects.filter(username=username).exists():
-    print(f"Création du superuser {username}...")
-    User.objects.create_superuser(
-        username=username,
-        email=os.environ.get("DJANGO_SUPERUSER_EMAIL", "admin@example.com"),
-        password=os.environ.get("DJANGO_SUPERUSER_PASSWORD", "motdepassefort")
+if User.objects.filter(username=username).exists():
+    print(f"Superuser {username} existe déjà, aucune création nécessaire.")
+elif not password:
+    # Jamais de mot de passe par défaut : un compte administrateur connu de tous serait
+    # une porte ouverte sur toute la plateforme.
+    print(
+        "DJANGO_SUPERUSER_PASSWORD non défini : aucun superutilisateur créé automatiquement. "
+        "Créez-le avec : python manage.py createsuperuser"
     )
 else:
-    print(f"Superuser {username} existe déjà, aucune création nécessaire.")
+    try:
+        validate_password(password)
+    except ValidationError as erreur:
+        print("DJANGO_SUPERUSER_PASSWORD refusé (" + " ".join(erreur.messages) + "). Aucun superutilisateur créé.")
+    else:
+        print(f"Création du superuser {username}...")
+        User.objects.create_superuser(
+            username=username,
+            email=os.environ.get("DJANGO_SUPERUSER_EMAIL", ""),
+            password=password,
+        )
 PYEOF
-
 
 exec "$@"

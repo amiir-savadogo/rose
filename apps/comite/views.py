@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -36,6 +37,7 @@ class SeanceCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
         return reverse("comite:seances")
 
 
+@login_required
 def dossier_seance(request, pk):
     """Le Comité des risques est volontairement transversal : il voit
     l'ensemble des directions, sans filtrage par périmètre. C'est un choix de
@@ -54,7 +56,9 @@ def dossier_seance(request, pk):
         date_survenue__gte=seance.periode_debut, date_survenue__lte=seance.date_seance
     ).order_by("-date_survenue")
 
-    controles_retard = [e for e in ControleExecution.objects.select_related("controle") if e.en_retard]
+    controles_retard = ControleExecution.objects.select_related("controle").filter(
+        resultat=ControleExecution.Resultat.NON_REALISE, date_prevue__lt=timezone.now().date()
+    )
 
     # Décisions non exécutées de TOUTES les séances antérieures — c'est ce qui donne
     # sa mémoire au comité : il ne redécouvre pas à chaque fois qu'une décision dort.
@@ -73,6 +77,7 @@ def dossier_seance(request, pk):
     })
 
 
+@login_required
 def ajouter_decision(request, pk):
     seance = get_object_or_404(SeanceComite, pk=pk)
     if not peut_gerer_risques(request.user):
@@ -93,6 +98,7 @@ def ajouter_decision(request, pk):
     return render(request, "comite/decision_form.html", {"form": form, "seance": seance})
 
 
+@login_required
 def executer_decision(request, pk):
     decision = get_object_or_404(DecisionComite, pk=pk)
     if not peut_gerer_risques(request.user):

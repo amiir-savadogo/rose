@@ -47,3 +47,31 @@ def objet_ou_404_perimetre(model_ou_queryset, user, pk, champ="direction"):
         queryset = model_ou_queryset
     queryset = filtrer_par_perimetre(queryset, user, champ=champ)
     return get_object_or_404(queryset, pk=pk)
+
+
+def limiter_aux_directions_visibles(champ_formulaire, user):
+    """Pour un utilisateur à périmètre restreint, ne propose que sa propre direction (ou aucune,
+    s'il n'en a pas) dans un champ de choix de direction : sans cela, il pourrait créer ou
+    déplacer un objet vers une direction qu'il n'a pas le droit de voir."""
+    if user is None or champ_formulaire is None or not a_perimetre_restreint(user):
+        return
+    queryset = champ_formulaire.queryset
+    champ_formulaire.queryset = queryset.filter(pk=user.direction_id) if user.direction_id else queryset.none()
+
+
+def limiter_aux_objets_du_perimetre(champ_formulaire, user, champ="direction"):
+    """Limite un champ de choix d'objets (risque, contrôle...) à ceux du périmètre de l'utilisateur,
+    pour ne pas lui révéler (liste déroulante) ni lui laisser rattacher des objets hors périmètre."""
+    if user is None or champ_formulaire is None:
+        return
+    champ_formulaire.queryset = filtrer_par_perimetre(champ_formulaire.queryset, user, champ=champ)
+
+
+class FormulaireAvecUtilisateurMixin:
+    """À placer en premier parmi les bases d'une CreateView/UpdateView : transmet l'utilisateur
+    courant au formulaire (argument `user`), qui s'en sert pour limiter ses choix au périmètre."""
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        kwargs["user"] = self.request.user
+        return kwargs

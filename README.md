@@ -1,6 +1,6 @@
 # Rose — Plateforme de gestion des risques opérationnels
 
-Squelette du backend Django (V1 / MVP), conteneurisé avec Docker dès le départ.
+Application Django (V1 / MVP), conteneurisée avec Docker dès le départ.
 
 ## Modules inclus
 
@@ -20,15 +20,23 @@ Interface complète en templates Django (pas seulement l'admin), avec charte gra
 ## Démarrage avec Docker
 
 ```bash
-cp .env.example .env          # adapter les valeurs (mot de passe DB, secret key...)
+cp .env.example .env          # OBLIGATOIRE : renseigner DJANGO_SECRET_KEY et POSTGRES_PASSWORD
 docker compose up --build
 ```
 
 L'application applique automatiquement les migrations au démarrage (voir `entrypoint.sh`).
-Créer un compte administrateur :
+Le conteneur ne tourne pas en root. **Aucun compte administrateur par défaut n'existe** : soit vous
+renseignez `DJANGO_SUPERUSER_PASSWORD` (12 caractères minimum, non trivial) dans `.env` pour qu'il soit
+créé au premier démarrage, soit vous le créez à la main :
 
 ```bash
 docker compose exec web python manage.py createsuperuser
+```
+
+Développement local (code monté à chaud, jamais en production) :
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 ```
 
 Ce compte est désormais automatiquement reconnu comme Administrateur côté Rose (section « Paramètres » visible dans la navigation). Si vous avez créé un superutilisateur **avant** ce correctif et qu'il n'a pas accès à la section Paramètres, corrigez-le en une commande :
@@ -40,7 +48,7 @@ docker compose exec web python manage.py promouvoir_admin <votre_identifiant>
 (ou depuis `/admin/`, en éditant votre utilisateur et en positionnant le champ « role » sur « Administrateur »).
 
 Accès à l'interface d'administration : http://localhost:8000/admin/
-Accès à l'API de tableau de bord : http://localhost:8000/api/dashboard/synthese/
+Accès à l'API de tableau de bord : http://localhost:8000/api/synthese/ (session authentifiée requise)
 
 ## Générer les échéances des obligations
 
@@ -67,11 +75,28 @@ Administrateur a toujours tous les droits (garde-fou volontaire, pour ne jamais 
 
 ## Tests automatisés
 
-Les règles métier critiques (séparation exécutant/superviseur, preuve obligatoire, seuils KRI, gel des campagnes, statut automatique des plans d'action, filtrage par périmètre, journal d'audit inaltérable, versions documentaires, échéances réglementaires, décisions de comité) sont couvertes par 62 tests Django, dans le dépôt (`apps/*/tests.py`), pas seulement vérifiées manuellement lors du développement :
+Les règles métier critiques (séparation exécutant/superviseur, preuve obligatoire, seuils KRI, gel des campagnes, statut automatique des plans d'action, filtrage par périmètre, journal d'audit inaltérable, versions documentaires, échéances réglementaires, décisions de comité) sont couvertes par 141 tests Django, dans le dépôt (`apps/*/tests.py`), pas seulement vérifiées manuellement lors du développement :
 
 ```bash
 docker compose exec web python manage.py test
 ```
+
+## Sécurité
+
+- **Production** : `DJANGO_DEBUG=False`, clé secrète aléatoire d'au moins 32 caractères (le logiciel refuse
+  de démarrer sinon), `DJANGO_SSL_REDIRECT=True` et `DJANGO_HSTS_SECONDS` dès que le site est en HTTPS.
+  Derrière un proxy, `DJANGO_BEHIND_PROXY` et `DJANGO_TRUSTED_PROXY_COUNT` (défaut : 1) décident de la
+  confiance accordée à `X-Forwarded-*`.
+- **Connexion** : verrou temporaire après 5 échecs par identifiant (20 par adresse IP) sur 15 minutes
+  (`DJANGO_LOGIN_MAX_ECHECS`, `DJANGO_LOGIN_MAX_ECHECS_IP`, `DJANGO_LOGIN_FENETRE_MIN`). Politique de mot de
+  passe appliquée dans l'interface. Session de 8 h (`DJANGO_SESSION_AGE`).
+- **Fichiers** : extensions autorisées et taille maximale (10 Mo, `DJANGO_UPLOAD_MAX_MB`) contrôlées au dépôt ;
+  les fichiers ne sont jamais servis par URL publique mais par des vues authentifiées, en pièce jointe, avec
+  contrôle de périmètre. **Hébergement** : le disque d'un service Render gratuit est éphémère — les fichiers
+  déposés y sont perdus à chaque redéploiement ; prévoir un disque persistant ou un stockage objet.
+- **Export/import Excel** : les cellules commençant par `= + - @` sont neutralisées (injection de formule) ;
+  import limité à 5 Mo et 2 000 lignes, tout ou rien.
+- **Dépendances** : Django 5.2 LTS ; vérifier régulièrement avec `pip-audit -r requirements.txt`.
 
 ## Prochaines étapes suggérées
 

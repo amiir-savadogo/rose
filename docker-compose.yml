@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-rose}
       POSTGRES_USER: ${POSTGRES_USER:-rose}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rose}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définissez POSTGRES_PASSWORD dans le fichier .env}
     volumes:
       - rose_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +22,6 @@ services:
     environment:
       POSTGRES_HOST: db
     volumes:
-      - .:/app
       - rose_media:/app/media
       - rose_static:/app/staticfiles
     ports:

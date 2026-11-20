@@ -6,3 +6,6 @@ media/
 staticfiles/
 .venv/
 *.log
+.env.*
+!.env.example
+.security-audit/
