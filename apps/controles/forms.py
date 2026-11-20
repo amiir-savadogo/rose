@@ -1,5 +1,7 @@
 from django import forms
 
+from apps.accounts.perimetre import limiter_aux_directions_visibles, limiter_aux_objets_du_perimetre
+from config.fichiers import securiser_champ_fichier
 from .models import Controle, ControleExecution
 
 
@@ -17,6 +19,11 @@ class ControleForm(forms.ModelForm):
             "executant": forms.Select(attrs={"class": "form-select"}),
             "superviseur": forms.Select(attrs={"class": "form-select"}),
         }
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        limiter_aux_directions_visibles(self.fields["direction"], user)
+        limiter_aux_objets_du_perimetre(self.fields["risque"], user, champ="direction")
 
     def clean(self):
         cleaned_data = super().clean()
@@ -44,3 +51,7 @@ class RenseignerExecutionForm(forms.ModelForm):
             "preuve": forms.ClearableFileInput(attrs={"class": "form-control"}),
             "commentaire": forms.Textarea(attrs={"class": "form-control", "rows": 2}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        securiser_champ_fichier(self, "preuve")

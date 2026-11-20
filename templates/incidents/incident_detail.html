@@ -62,7 +62,7 @@
       <div class="rose-section-label">Pièces jointes</div>
       <ul class="list-unstyled mb-3">
         {% for pj in pieces_jointes %}
-        <li class="mb-1"><a href="{{ pj.fichier.url }}" target="_blank"><i class="bi bi-paperclip"></i> {{ pj.fichier.name }}</a></li>
+        <li class="mb-1"><a href="{% url 'incidents:telecharger_piece_jointe' pj.pk %}"><i class="bi bi-paperclip"></i> {{ pj.fichier.name }}</a></li>
         {% empty %}
         <li class="text-muted">Aucune pièce jointe.</li>
         {% endfor %}

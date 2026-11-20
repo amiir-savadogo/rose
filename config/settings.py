@@ -18,14 +18,27 @@ DEBUG = config("DJANGO_DEBUG", default=False, cast=bool)
 
 _SECRET_KEY_DEV_PAR_DEFAUT = "dev-secret-key-a-changer-en-production"
 SECRET_KEY = config("DJANGO_SECRET_KEY", default=_SECRET_KEY_DEV_PAR_DEFAUT)
-if not DEBUG and SECRET_KEY == _SECRET_KEY_DEV_PAR_DEFAUT:
+if not DEBUG and (
+    SECRET_KEY == _SECRET_KEY_DEV_PAR_DEFAUT
+    or SECRET_KEY.startswith("remplacez")
+    or len(SECRET_KEY) < 32
+):
     raise ImproperlyConfigured(
-        "DJANGO_SECRET_KEY doit être défini (variable d'environnement) en production — "
-        "voir .env.example. Le logiciel refuse de démarrer avec la clé de développement "
-        "par défaut hors de DEBUG=True, pour éviter qu'une installation client tourne "
-        "avec une clé connue publiquement."
+        "DJANGO_SECRET_KEY doit être une vraie valeur aléatoire d'au moins 32 caractères "
+        "(variable d'environnement) en production — voir .env.example. Le logiciel refuse "
+        "de démarrer avec la clé de développement, une valeur d'exemple ou une clé trop "
+        "courte hors de DEBUG=True, pour éviter qu'une installation client tourne avec une "
+        "clé connue publiquement."
     )
+
+# Hôtes autorisés et origines CSRF de confiance : jamais de joker sur un domaine partagé.
+# Sur Render, RENDER_EXTERNAL_HOSTNAME (fourni automatiquement) désigne le service exact.
 ALLOWED_HOSTS = config("DJANGO_ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv())
+CSRF_TRUSTED_ORIGINS = config("DJANGO_CSRF_TRUSTED_ORIGINS", default="", cast=Csv())
+_hote_render = config("RENDER_EXTERNAL_HOSTNAME", default="")
+if _hote_render:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, _hote_render]
+    CSRF_TRUSTED_ORIGINS = [*CSRF_TRUSTED_ORIGINS, f"https://{_hote_render}"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -132,13 +145,48 @@ REST_FRAMEWORK = {
     ],
 }
 
-# Sécurité de base recommandée en production (activée automatiquement si DEBUG=False)
+# --- Sécurité ---------------------------------------------------------------------
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+# Durée de session : 8 h par défaut (journée de travail), ajustable par institution.
+SESSION_COOKIE_AGE = config("DJANGO_SESSION_AGE", default=8 * 3600, cast=int)
+SECURE_REFERRER_POLICY = "same-origin"
+SECURE_CONTENT_TYPE_NOSNIFF = True
+X_FRAME_OPTIONS = "DENY"
+
+# Derrière un reverse proxy / répartiteur de charge qui termine le TLS (Render, nginx...),
+# le schéma réel est lu dans X-Forwarded-Proto. À désactiver (DJANGO_BEHIND_PROXY=False)
+# si l'application est exposée directement, sans proxy de confiance devant elle.
+BEHIND_PROXY = config("DJANGO_BEHIND_PROXY", default=True, cast=bool)
+# Nombre de proxys de confiance devant l'application (1 = Render, nginx...). L'adresse IP du
+# client est lue dans X-Forwarded-For en comptant depuis la DROITE, car les valeurs de gauche
+# sont fournies par le client et donc falsifiables.
+TRUSTED_PROXY_COUNT = config("DJANGO_TRUSTED_PROXY_COUNT", default=1, cast=int)
+if BEHIND_PROXY:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
 if not DEBUG:
-    SECURE_BROWSER_XSS_FILTER = True
-    SECURE_CONTENT_TYPE_NOSNIFF = True
-    X_FRAME_OPTIONS = "DENY"
     CSRF_COOKIE_SECURE = config("DJANGO_SECURE_COOKIES", default=True, cast=bool)
     SESSION_COOKIE_SECURE = config("DJANGO_SECURE_COOKIES", default=True, cast=bool)
+    # Redirection HTTP -> HTTPS et HSTS : à activer dès que le site est servi en HTTPS.
+    SECURE_SSL_REDIRECT = config("DJANGO_SSL_REDIRECT", default=False, cast=bool)
+    SECURE_HSTS_SECONDS = config("DJANGO_HSTS_SECONDS", default=0, cast=int)
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
+    # La sonde de santé de la plateforme d'hébergement ne doit pas être redirigée.
+    SECURE_REDIRECT_EXEMPT = [r"^healthz/$"]
 
-SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
-CSRF_TRUSTED_ORIGINS = ["https://*.onrender.com"]
+# --- Fichiers téléversés (preuves, pièces jointes, documents) -----------------------
+# Liste blanche d'extensions et taille maximale : voir config/fichiers.py.
+# Les fichiers ne sont JAMAIS servis directement par l'application web : ils passent
+# par des vues authentifiées (téléchargement en pièce jointe, contrôle de périmètre).
+UPLOAD_MAX_BYTES = config("DJANGO_UPLOAD_MAX_MB", default=10, cast=int) * 1024 * 1024
+UPLOAD_EXTENSIONS_AUTORISEES = {
+    ".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".odt", ".ods", ".odp",
+    ".txt", ".csv", ".png", ".jpg", ".jpeg", ".zip",
+}
+
+# --- Protection contre le brute-force de la page de connexion --------------------------
+LOGIN_MAX_ECHECS_PAR_IDENTIFIANT = config("DJANGO_LOGIN_MAX_ECHECS", default=5, cast=int)
+LOGIN_MAX_ECHECS_PAR_IP = config("DJANGO_LOGIN_MAX_ECHECS_IP", default=20, cast=int)
+LOGIN_FENETRE_MINUTES = config("DJANGO_LOGIN_FENETRE_MIN", default=15, cast=int)

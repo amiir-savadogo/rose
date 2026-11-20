@@ -1,15 +1,30 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db import transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.http import require_POST
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.accounts.permissions import peut_administrer, peut_gerer_risques
-from apps.accounts.perimetre import objet_ou_404_perimetre
+from apps.accounts.perimetre import (
+    FormulaireAvecUtilisateurMixin, a_perimetre_restreint, filtrer_par_perimetre, objet_ou_404_perimetre,
+)
 from .forms import ActionPlanForm, CampagneForm, ImportRisquesCSVForm, KeyRiskIndicatorForm, RiskCategoryForm, RiskEvaluationForm, RiskForm
-from .models import CategorieEvenement, Risk, RiskCategory, SousCategorieEvenement
+from .models import Campagne, CategorieEvenement, Risk, RiskCategory, SousCategorieEvenement
 from .typologie import exemples_par_sous_categorie, trouver_sous_categorie
+
+LONGUEUR_MAX_TITRE = 200  # Risk.titre / Risk.processus (max_length)
+
+
+def securiser_cellule_excel(valeur):
+    """Neutralise l'injection de formule : une cellule texte commençant par = + - @ (ou une
+    tabulation / un retour chariot) serait exécutée comme une formule à l'ouverture dans Excel.
+    On la préfixe d'une apostrophe, qui la force en texte (recommandation OWASP)."""
+    if isinstance(valeur, str) and valeur[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + valeur
+    return valeur
 
 
 class RiskListView(LoginRequiredMixin, ListView):
@@ -72,7 +87,7 @@ class RiskDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
-class RiskCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
+class RiskCreateView(FormulaireAvecUtilisateurMixin, LoginRequiredMixin, UserPassesTestMixin, CreateView):
     model = Risk
     form_class = RiskForm
     template_name = "risks/risk_form.html"
@@ -113,6 +128,9 @@ def ajouter_evaluation(request, pk):
             evaluation = form.save(commit=False)
             evaluation.risque = risque
             evaluation.evalue_par = request.user
+            # Rattache l'évaluation à la campagne ouverte la plus récente : sans cela, la clôture
+            # d'une campagne ne figeait jamais aucune évaluation.
+            evaluation.campagne = Campagne.objects.filter(statut=Campagne.Statut.OUVERTE).order_by("-date_ouverture").first()
             evaluation.save()
             messages.success(request, "Nouvelle évaluation enregistrée.")
             return redirect("risks:detail", pk=pk)
@@ -130,7 +148,7 @@ def ajouter_plan_action(request, pk):
         return redirect("risks:detail", pk=pk)
 
     if request.method == "POST":
-        form = ActionPlanForm(request.POST)
+        form = ActionPlanForm(request.POST, user=request.user)
         if form.is_valid():
             action = form.save(commit=False)
             action.risque = risque
@@ -138,7 +156,7 @@ def ajouter_plan_action(request, pk):
             messages.success(request, "Plan d'action ajouté.")
             return redirect("risks:detail", pk=pk)
     else:
-        form = ActionPlanForm()
+        form = ActionPlanForm(user=request.user)
 
     return render(request, "risks/action_plan_form.html", {"form": form, "risque": risque})
 
@@ -188,7 +206,10 @@ def typologie_evenements(request):
 def vue_matricielle(request):
     """Cartographie croisée processus × entité : pour chaque croisement, le risque
     résiduel le plus élevé parmi les risques actifs correspondants."""
-    risques = Risk.objects.filter(statut=Risk.Statut.ACTIF).select_related("direction").prefetch_related("evaluations")
+    risques = filtrer_par_perimetre(
+        Risk.objects.filter(statut=Risk.Statut.ACTIF).select_related("direction").prefetch_related("evaluations"),
+        request.user, champ="direction",
+    )
 
     processus_set, directions_set = [], []
     grille = {}
@@ -307,6 +328,7 @@ class ActionPlanListView(LoginRequiredMixin, ListView):
     def get_queryset(self):
         from .models import ActionPlan
         qs = ActionPlan.objects.select_related("risque", "responsable").order_by("echeance")
+        qs = filtrer_par_perimetre(qs, self.request.user, champ="risque__direction")
         statut = self.request.GET.get("statut")
         origine = self.request.GET.get("origine")
         if statut:
@@ -316,7 +338,7 @@ class ActionPlanListView(LoginRequiredMixin, ListView):
         return qs
 
 
-class RiskUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+class RiskUpdateView(FormulaireAvecUtilisateurMixin, LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     model = Risk
     form_class = RiskForm
     template_name = "risks/risk_form.html"
@@ -338,12 +360,16 @@ class RiskUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
         return reverse("risks:detail", kwargs={"pk": self.object.pk})
 
 
-class ActionPlanUpdateView(LoginRequiredMixin, UserPassesTestMixin, UpdateView):
+class ActionPlanUpdateView(FormulaireAvecUtilisateurMixin, LoginRequiredMixin, UserPassesTestMixin, UpdateView):
     from .models import ActionPlan
     model = ActionPlan
     form_class = ActionPlanForm
     template_name = "risks/action_plan_edit_form.html"
     success_url = "/risques/plans-action/"
+
+    def get_queryset(self):
+        from .models import ActionPlan
+        return filtrer_par_perimetre(ActionPlan.objects.all(), self.request.user, champ="risque__direction")
 
     def test_func(self):
         return peut_gerer_risques(self.request.user)
@@ -379,6 +405,7 @@ class CampagneCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateView):
 
 
 @login_required
+@require_POST
 def cloturer_campagne(request, pk):
     from .models import Campagne
     from django.utils import timezone
@@ -393,6 +420,7 @@ def cloturer_campagne(request, pk):
     return redirect("risks:campagnes")
 
 
+LIGNES_MAX_IMPORT = 2000
 COLONNES_IMPORT = ["titre", "categorie", "type_evenement", "direction", "processus", "description"]
 EN_TETES_IMPORT = ["Titre du risque", "Catégorie", "Type d'événement (Bâle)", "Direction / Entité", "Processus", "Description"]
 TITRE_EXEMPLE_MODELE = "Défaut de contrepartie sur le portefeuille PME"
@@ -472,9 +500,13 @@ def exporter_risques_csv(request):
         cell.font = Font(bold=True, color="FFFFFF")
         cell.fill = PatternFill(start_color="15313D", end_color="15313D", fill_type="solid")
 
-    for risque in Risk.objects.select_related("categorie", "direction", "sous_categorie_evenement__categorie").prefetch_related("evaluations"):
+    risques = filtrer_par_perimetre(
+        Risk.objects.select_related("categorie", "direction", "sous_categorie_evenement__categorie").prefetch_related("evaluations"),
+        request.user, champ="direction",
+    )
+    for risque in risques:
         derniere = risque.derniere_evaluation
-        ws.append([
+        ws.append([securiser_cellule_excel(v) for v in [
             f"R-{risque.pk:03d}",
             risque.titre,
             risque.categorie.nom,
@@ -487,7 +519,7 @@ def exporter_risques_csv(request):
             derniere.score_residuel if derniere else None,
             derniere.niveau_residuel_display if derniere else "",
             risque.description,
-        ])
+        ]])
 
     for i, largeur in enumerate([10, 40, 20, 40, 25, 22, 12, 10, 10, 10, 12, 50], start=1):
         ws.column_dimensions[chr(64 + i)].width = largeur
@@ -514,13 +546,19 @@ def importer_risques_csv(request):
         if form.is_valid():
             fichier = form.cleaned_data["fichier"]
             try:
-                wb = load_workbook(fichier, data_only=True)
+                # Mode lecture seule : mémoire bornée, aucune formule évaluée, pas de liens externes.
+                wb = load_workbook(fichier, read_only=True, data_only=True)
             except Exception:
                 messages.error(request, "Fichier illisible : vérifiez qu'il s'agit bien d'un fichier .xlsx (utilisez le modèle fourni).")
                 return render(request, "risks/import_csv.html", {"form": form})
 
             ws = wb.worksheets[0]
-            lignes = list(ws.iter_rows(values_only=True))
+            lignes = []
+            for ligne in ws.iter_rows(values_only=True):
+                lignes.append(ligne)
+                if len(lignes) > LIGNES_MAX_IMPORT + 1:
+                    messages.error(request, f"Fichier trop volumineux : {LIGNES_MAX_IMPORT} lignes maximum par import.")
+                    return render(request, "risks/import_csv.html", {"form": form})
             if not lignes:
                 messages.error(request, "Le fichier est vide.")
                 return render(request, "risks/import_csv.html", {"form": form})
@@ -559,42 +597,53 @@ def importer_risques_csv(request):
                 return str(ligne[idx] or "").strip()
 
             crees, erreurs = 0, []
-            for i, ligne in enumerate(lignes[1:], start=2):
-                if ligne is None or not any(ligne):
-                    continue
-                titre = valeur(ligne, "titre")
-                if titre == TITRE_EXEMPLE_MODELE:
-                    continue  # ligne d'exemple du modèle, jamais importée même si l'utilisateur a oublié de la retirer
-                if not titre or titre.lower().startswith("exemple"):
-                    if not titre:
-                        erreurs.append(f"Ligne {i} : titre manquant, ignorée.")
-                    continue
+            restreint = a_perimetre_restreint(request.user)
+            # Tout ou rien : une erreur en cours d'import n'en laisse pas la moitié en base.
+            with transaction.atomic():
+                for i, ligne in enumerate(lignes[1:], start=2):
+                    if ligne is None or not any(ligne):
+                        continue
+                    titre = valeur(ligne, "titre")
+                    if titre == TITRE_EXEMPLE_MODELE:
+                        continue  # ligne d'exemple du modèle, jamais importée même si l'utilisateur a oublié de la retirer
+                    if not titre or titre.lower().startswith("exemple"):
+                        if not titre:
+                            erreurs.append(f"Ligne {i} : titre manquant, ignorée.")
+                        continue
+                    processus = valeur(ligne, "processus")
+                    if len(titre) > LONGUEUR_MAX_TITRE or len(processus) > LONGUEUR_MAX_TITRE:
+                        erreurs.append(f"Ligne {i} : titre ou processus trop long ({LONGUEUR_MAX_TITRE} caractères maximum), ignorée.")
+                        continue
 
-                sous_categorie, probleme = trouver_sous_categorie(valeur(ligne, "type_evenement"))
-                if probleme:
-                    erreurs.append(f"Ligne {i} : {probleme} — risque créé sans type d'événement.")
+                    sous_categorie, probleme = trouver_sous_categorie(valeur(ligne, "type_evenement"))
+                    if probleme:
+                        erreurs.append(f"Ligne {i} : {probleme} — risque créé sans type d'événement.")
 
-                nom_categorie = valeur(ligne, "categorie")
-                if not nom_categorie and sous_categorie:
-                    nom_categorie = sous_categorie.categorie.libelle
-                categorie, _ = RiskCategory.objects.get_or_create(nom=nom_categorie or "Non classé")
+                    nom_categorie = valeur(ligne, "categorie")
+                    if not nom_categorie and sous_categorie:
+                        nom_categorie = sous_categorie.categorie.libelle
+                    categorie, _ = RiskCategory.objects.get_or_create(nom=(nom_categorie or "Non classé")[:150])
 
-                direction = None
-                nom_direction = valeur(ligne, "direction")
-                if nom_direction:
-                    from apps.accounts.models import Direction
-                    direction, _ = Direction.objects.get_or_create(nom=nom_direction)
+                    direction = None
+                    if restreint:
+                        # Un utilisateur à périmètre restreint n'importe que dans sa propre direction.
+                        direction = request.user.direction
+                    else:
+                        nom_direction = valeur(ligne, "direction")
+                        if nom_direction:
+                            from apps.accounts.models import Direction
+                            direction, _ = Direction.objects.get_or_create(nom=nom_direction[:150])
 
-                Risk.objects.create(
-                    titre=titre,
-                    categorie=categorie,
-                    sous_categorie_evenement=sous_categorie,
-                    direction=direction,
-                    processus=valeur(ligne, "processus"),
-                    description=valeur(ligne, "description"),
-                    proprietaire=request.user,
-                )
-                crees += 1
+                    Risk.objects.create(
+                        titre=titre,
+                        categorie=categorie,
+                        sous_categorie_evenement=sous_categorie,
+                        direction=direction,
+                        processus=processus,
+                        description=valeur(ligne, "description"),
+                        proprietaire=request.user,
+                    )
+                    crees += 1
 
             resume = {"crees": crees, "erreurs": erreurs}
             if crees:

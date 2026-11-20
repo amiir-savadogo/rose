@@ -1,5 +1,6 @@
 from django import forms
 
+from config.fichiers import securiser_champ_fichier
 from .models import Document, DocumentAttendu, DocumentVersion
 
 
@@ -18,6 +19,10 @@ class DocumentForm(forms.ModelForm):
             "nature": forms.Select(attrs={"class": "form-select"}),
             "responsable": forms.Select(attrs={"class": "form-select"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        securiser_champ_fichier(self, "fichier")
 
 
 class DocumentMetaForm(forms.ModelForm):
@@ -43,6 +48,10 @@ class DocumentVersionForm(forms.ModelForm):
             "revue_prevue": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "note_revision": forms.Textarea(attrs={"class": "form-control", "rows": 3, "placeholder": "Qu'est-ce qui a changé ?"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        securiser_champ_fichier(self, "fichier")
 
 
 class DocumentAttenduForm(forms.ModelForm):

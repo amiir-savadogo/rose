@@ -50,7 +50,7 @@
 </div>
 {% if derniere.fichier %}
 <div class="rose-panel">
-  <a href="{{ derniere.fichier.url }}" target="_blank" class="btn btn-rose-outline btn-sm"><i class="bi bi-download"></i> Télécharger la version en vigueur (v{{ derniere.version }})</a>
+  <a href="{% url 'bibliotheque:telecharger_version' derniere.pk %}" class="btn btn-rose-outline btn-sm"><i class="bi bi-download"></i> Télécharger la version en vigueur (v{{ derniere.version }})</a>
 </div>
 {% endif %}
 {% else %}
@@ -70,7 +70,7 @@
         <td>{{ v.deposee_par }}</td>
         <td class="text-muted small">{{ v.deposee_le|date:"d/m/Y H:i" }}</td>
         <td class="text-muted small">{{ v.note_revision|default:"—" }}</td>
-        <td>{% if v.fichier %}<a href="{{ v.fichier.url }}" target="_blank"><i class="bi bi-download"></i></a>{% else %}—{% endif %}</td>
+        <td>{% if v.fichier %}<a href="{% url 'bibliotheque:telecharger_version' v.pk %}"><i class="bi bi-download"></i></a>{% else %}—{% endif %}</td>
       </tr>
       {% empty %}
       <tr><td colspan="7" class="text-center text-muted py-3">Aucune version.</td></tr>

@@ -36,7 +36,7 @@
           </span>
         </td>
         <td>
-          {% if e.preuve %}<a href="{{ e.preuve.url }}" target="_blank"><i class="bi bi-download"></i></a>
+          {% if e.preuve %}<a href="{% url 'controles:telecharger_preuve' e.pk %}"><i class="bi bi-download"></i></a>
           {% elif e.preuve_manquante %}<span class="pill pill-eleve">Manquante</span>
           {% else %}—{% endif %}
         </td>

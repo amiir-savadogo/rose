@@ -7,9 +7,10 @@ from django.urls import reverse
 from django.views.generic import CreateView, DetailView, ListView
 
 from .forms import ChangerStatutForm, IncidentForm, PieceJointeForm
-from .models import Incident, IncidentCommentaire
+from .models import Incident, IncidentCommentaire, IncidentPieceJointe
 from apps.accounts.permissions import peut_traiter_incidents
-from apps.accounts.perimetre import objet_ou_404_perimetre
+from apps.accounts.perimetre import FormulaireAvecUtilisateurMixin, filtrer_par_perimetre, objet_ou_404_perimetre
+from config.fichiers import reponse_telechargement
 
 
 class IncidentListView(LoginRequiredMixin, ListView):
@@ -49,7 +50,7 @@ class IncidentDetailView(LoginRequiredMixin, DetailView):
         return ctx
 
 
-class IncidentCreateView(LoginRequiredMixin, CreateView):
+class IncidentCreateView(FormulaireAvecUtilisateurMixin, LoginRequiredMixin, CreateView):
     model = Incident
     form_class = IncidentForm
     template_name = "incidents/incident_form.html"
@@ -111,7 +112,7 @@ def ajouter_piece_jointe(request, pk):
 @login_required
 def analyse(request):
     """Analyse agrégée des incidents : pertes cumulées, répartition par catégorie et processus."""
-    qs = Incident.objects.all()
+    qs = filtrer_par_perimetre(Incident.objects.all(), request.user, champ="direction")
 
     par_categorie = list(
         qs.exclude(categorie_evenement="").values("categorie_evenement").annotate(total=Count("id")).order_by("-total")
@@ -126,9 +127,12 @@ def analyse(request):
     # Repère les risques sous-cotés : risques faibles/modérés qui accumulent des incidents
     from apps.risks.models import Risk
     risques_sous_cotes = []
-    for risque in Risk.objects.filter(statut=Risk.Statut.ACTIF).prefetch_related("evaluations", "incidents"):
+    risques_visibles = filtrer_par_perimetre(
+        Risk.objects.filter(statut=Risk.Statut.ACTIF).prefetch_related("evaluations"), request.user, champ="direction"
+    ).annotate(nb_incidents=Count("incidents", distinct=True))
+    for risque in risques_visibles:
         derniere = risque.derniere_evaluation
-        nb_incidents = risque.incidents.count()
+        nb_incidents = risque.nb_incidents
         if derniere and derniere.niveau_residuel in ("faible", "modere") and nb_incidents >= 1:
             risques_sous_cotes.append({"risque": risque, "nb_incidents": nb_incidents})
 
@@ -156,3 +160,10 @@ def analyse(request):
         "perte_nette": perte_brute - recuperation,
         "risques_sous_cotes": risques_sous_cotes,
     })
+
+
+@login_required
+def telecharger_piece_jointe(request, pk):
+    """Téléchargement d'une pièce jointe : authentifié, limité au périmètre, toujours en pièce jointe."""
+    piece = objet_ou_404_perimetre(IncidentPieceJointe, request.user, pk, champ="incident__direction")
+    return reponse_telechargement(piece.fichier)

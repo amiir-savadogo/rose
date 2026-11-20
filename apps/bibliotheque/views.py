@@ -6,6 +6,7 @@ from django.urls import reverse
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from apps.accounts.permissions import peut_gerer_bibliotheque
+from config.fichiers import reponse_telechargement
 from .forms import DocumentAttenduForm, DocumentForm, DocumentMetaForm, DocumentVersionForm
 from .models import Document, DocumentAttendu, DocumentVersion
 
@@ -131,3 +132,11 @@ class DocumentAttenduCreateView(LoginRequiredMixin, UserPassesTestMixin, CreateV
     def form_valid(self, form):
         messages.success(self.request, "Document attendu ajouté au corpus.")
         return super().form_valid(form)
+
+
+@login_required
+def telecharger_version(request, pk):
+    """Téléchargement du fichier d'une version : authentifié, toujours en pièce jointe.
+    (La bibliothèque est institutionnelle : visible de tout utilisateur connecté.)"""
+    version = get_object_or_404(DocumentVersion, pk=pk)
+    return reponse_telechargement(version.fichier)

@@ -2,11 +2,21 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import HttpResponse
 from django.urls import include, path
 
+from apps.accounts.views import ConnexionProtegeeView
+
+
+def sante(request):
+    """Sonde de santé (liveness) pour l'hébergeur : aucune donnée, aucune authentification."""
+    return HttpResponse("ok", content_type="text/plain")
+
+
 urlpatterns = [
+    path("healthz/", sante, name="healthz"),
     path("admin/", admin.site.urls),
-    path("accounts/login/", auth_views.LoginView.as_view(template_name="registration/login.html"), name="login"),
+    path("accounts/login/", ConnexionProtegeeView.as_view(), name="login"),
     path("accounts/logout/", auth_views.LogoutView.as_view(next_page="login"), name="logout"),
     path("", include("apps.dashboard.urls", namespace="dashboard")),
     path("risques/", include("apps.risks.urls", namespace="risks")),
@@ -17,7 +27,6 @@ urlpatterns = [
     path("comite/", include("apps.comite.urls", namespace="comite")),
     path("audit/", include("apps.audit.urls", namespace="audit")),
     path("parametres/", include("apps.accounts.urls", namespace="accounts")),
-    path("api-auth/", include("rest_framework.urls")),
 ]
 
 if settings.DEBUG:

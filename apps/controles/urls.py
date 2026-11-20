@@ -11,4 +11,5 @@ urlpatterns = [
     path("executions/", views.ExecutionListView.as_view(), name="executions"),
     path("<int:pk>/programmer/", views.programmer_execution, name="programmer"),
     path("execution/<int:pk>/", views.renseigner_execution, name="renseigner"),
+    path("execution/<int:pk>/preuve/", views.telecharger_preuve, name="telecharger_preuve"),
 ]

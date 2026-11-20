@@ -1,13 +1,64 @@
+from datetime import timedelta
+
+from django.conf import settings
 from django.contrib import messages
+from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.contrib.auth.views import LoginView
+from django.db.models import Max, Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.views.generic import CreateView, ListView, UpdateView
 
-from .forms import DirectionForm, ReinitialiserMotDePasseForm, UserCreateForm, UserUpdateForm
+from .forms import (
+    ChangerMotDePasseForm, DirectionForm, ProfilForm, ReinitialiserMotDePasseForm, UserCreateForm, UserUpdateForm,
+)
 from .models import Direction, Permission as RolePermissionChoices, Role, RolePermission, User
 from .permissions import peut_administrer
+
+
+def connexion_bloquee(request, identifiant):
+    """Vrai si trop de connexions échouées récentes pour cet identifiant ou cette adresse IP.
+
+    S'appuie sur le journal d'audit (qui consigne déjà chaque échec) : pas de dépendance
+    supplémentaire, et le compteur est partagé entre tous les processus du serveur.
+    Pendant le blocage, les tentatives ne sont plus évaluées ni journalisées : la fenêtre
+    n'est donc jamais prolongée par l'attaquant et le blocage expire de lui-même.
+    """
+    from apps.audit.models import AuditLogEntry
+    from apps.audit.signals import adresse_ip
+
+    depuis = timezone.now() - timedelta(minutes=settings.LOGIN_FENETRE_MINUTES)
+    echecs = AuditLogEntry.objects.filter(modele="auth.ConnexionEchouee", horodatage__gte=depuis)
+    identifiant = (identifiant or "").strip()[:150]
+    if identifiant and echecs.filter(
+        valeurs_apres__identifiant_saisi__iexact=identifiant
+    ).count() >= settings.LOGIN_MAX_ECHECS_PAR_IDENTIFIANT:
+        return True
+    ip = adresse_ip(request)
+    if ip and echecs.filter(valeurs_apres__adresse_ip=ip).count() >= settings.LOGIN_MAX_ECHECS_PAR_IP:
+        return True
+    return False
+
+
+class ConnexionProtegeeView(LoginView):
+    """Page de connexion avec verrou temporaire après trop d'échecs (anti brute-force)."""
+    template_name = "registration/login.html"
+    bloque = False
+
+    def post(self, request, *args, **kwargs):
+        if connexion_bloquee(request, request.POST.get("username", "")):
+            self.bloque = True
+            return self.form_invalid(self.get_form())
+        return super().post(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["bloque"] = self.bloque
+        ctx["fenetre_minutes"] = settings.LOGIN_FENETRE_MINUTES
+        return ctx
 
 
 class DirectionListView(LoginRequiredMixin, UserPassesTestMixin, ListView):
@@ -81,20 +132,16 @@ def reinitialiser_mot_de_passe(request, pk):
         return redirect("accounts:utilisateurs")
 
     if request.method == "POST":
-        form = ReinitialiserMotDePasseForm(request.POST)
+        form = ReinitialiserMotDePasseForm(request.POST, user=cible)
         if form.is_valid():
             cible.set_password(form.cleaned_data["password1"])
             cible.save()
             messages.success(request, f"Mot de passe de {cible.username} réinitialisé.")
             return redirect("accounts:utilisateurs")
     else:
-        form = ReinitialiserMotDePasseForm()
+        form = ReinitialiserMotDePasseForm(user=cible)
 
     return render(request, "accounts/reinitialiser_form.html", {"form": form, "cible": cible})
-
-
-from django.contrib.auth import update_session_auth_hash
-from .forms import ChangerMotDePasseForm, ProfilForm
 
 
 @login_required
@@ -138,22 +185,19 @@ class SessionsActivesView(LoginRequiredMixin, UserPassesTestMixin, ListView):
         return peut_administrer(self.request.user)
 
     def get_queryset(self):
-        from apps.audit.models import AuditLogEntry
+        utilisateurs = User.objects.annotate(
+            derniere_connexion=Max("actions_journalisees__horodatage", filter=Q(actions_journalisees__modele="auth.Connexion")),
+            derniere_deconnexion=Max("actions_journalisees__horodatage", filter=Q(actions_journalisees__modele="auth.Deconnexion")),
+        ).order_by("username")
         resultats = []
-        for u in User.objects.all().order_by("username"):
-            derniere_connexion = AuditLogEntry.objects.filter(
-                utilisateur=u, modele="auth.Connexion"
-            ).order_by("-horodatage").first()
-            derniere_deconnexion = AuditLogEntry.objects.filter(
-                utilisateur=u, modele="auth.Deconnexion"
-            ).order_by("-horodatage").first()
-            en_ligne = False
-            if derniere_connexion and (not derniere_deconnexion or derniere_deconnexion.horodatage < derniere_connexion.horodatage):
-                en_ligne = True
+        for u in utilisateurs:
+            en_ligne = bool(u.derniere_connexion) and (
+                not u.derniere_deconnexion or u.derniere_deconnexion < u.derniere_connexion
+            )
             resultats.append({
                 "utilisateur": u,
-                "derniere_connexion": derniere_connexion.horodatage if derniere_connexion else None,
-                "derniere_deconnexion": derniere_deconnexion.horodatage if derniere_deconnexion else None,
+                "derniere_connexion": u.derniere_connexion,
+                "derniere_deconnexion": u.derniere_deconnexion,
                 "en_ligne": en_ligne,
             })
         return resultats

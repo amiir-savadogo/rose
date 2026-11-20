@@ -1,5 +1,7 @@
 from django import forms
 
+from apps.accounts.perimetre import limiter_aux_directions_visibles, limiter_aux_objets_du_perimetre
+
 from .models import ActionPlan, Campagne, KeyRiskIndicator, Risk, RiskCategory, RiskEvaluation
 from .typologie import choix_groupes
 
@@ -19,8 +21,9 @@ class RiskForm(forms.ModelForm):
             "proprietaire": forms.Select(attrs={"class": "form-select"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        limiter_aux_directions_visibles(self.fields["direction"], user)
         champ = self.fields["sous_categorie_evenement"]
         champ.choices = choix_groupes()
         # La catégorie de risque se déduit du type d'événement quand il est renseigné.
@@ -59,6 +62,10 @@ class RiskEvaluationForm(forms.ModelForm):
 
 
 class ActionPlanForm(forms.ModelForm):
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        limiter_aux_objets_du_perimetre(self.fields["risque"], user, champ="direction")
+
     class Meta:
         model = ActionPlan
         fields = ["risque", "origine", "description", "responsable", "echeance", "avancement"]
@@ -131,3 +138,13 @@ class ImportRisquesCSVForm(forms.Form):
         widget=forms.ClearableFileInput(attrs={"class": "form-control", "accept": ".xlsx"}),
         help_text="Utilisez le modèle téléchargeable ci-dessus pour être sûr des colonnes attendues.",
     )
+
+    TAILLE_MAX = 5 * 1024 * 1024
+
+    def clean_fichier(self):
+        fichier = self.cleaned_data["fichier"]
+        if not (fichier.name or "").lower().endswith(".xlsx"):
+            raise forms.ValidationError("Seuls les fichiers Excel .xlsx sont acceptés.")
+        if fichier.size > self.TAILLE_MAX:
+            raise forms.ValidationError("Fichier trop volumineux (5 Mo maximum).")
+        return fichier

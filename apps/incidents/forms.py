@@ -1,6 +1,8 @@
 from django import forms
 
+from apps.accounts.perimetre import limiter_aux_directions_visibles, limiter_aux_objets_du_perimetre
 from apps.risks.typologie import choix_groupes
+from config.fichiers import securiser_champ_fichier
 from .models import Incident, IncidentCommentaire, IncidentPieceJointe
 
 
@@ -25,8 +27,10 @@ class IncidentForm(forms.ModelForm):
             "risques_lies": forms.SelectMultiple(attrs={"class": "form-select"}),
         }
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, user=None, **kwargs):
         super().__init__(*args, **kwargs)
+        limiter_aux_directions_visibles(self.fields["direction"], user)
+        limiter_aux_objets_du_perimetre(self.fields["risques_lies"], user, champ="direction")
         self.fields["sous_categorie"].choices = choix_groupes()
         self.fields["sous_categorie"].label = "Type d'événement (Bâle)"
 
@@ -58,3 +62,7 @@ class PieceJointeForm(forms.ModelForm):
         model = IncidentPieceJointe
         fields = ["fichier"]
         widgets = {"fichier": forms.ClearableFileInput(attrs={"class": "form-control"})}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        securiser_champ_fichier(self, "fichier")
